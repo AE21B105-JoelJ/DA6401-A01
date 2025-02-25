@@ -88,4 +88,12 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     outs_ :  list of matrices which gives the post activations of all layers
     """
 
-    
+    # Some assertions to be made 
+    assert input_.shape[1] == Weights[0].shape[1], "The input dimentions does not match !!"
+    assert len(Weights) == len(activation_sequence), "The activation sequence does not match with hidden layer !!"
+
+    # Forward prop...
+    fp_matrices = [input_]
+    for i in range(len(Weights)):
+        W, b = Weights[i], Biases[i]
+
