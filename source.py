@@ -54,3 +54,13 @@ def sigmoid(input_):
     """
     output_ = 1 / (1 + np.exp(-input_))
     return output_
+
+def tanh(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with tanh applied
+    """
+    output_ = (2 / (1 + np.exp(-2*input_))) - 1
+    return output_
+
