@@ -45,3 +45,12 @@ def relu(input_):
     zeros_ = np.zeros_like(input_)
     output_ = np.maximum(input_, zeros_)
     return output_
+
+def sigmoid(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with sigmoid applied
+    """
+    output_ = 1 / (1 + np.exp(-input_))
+    return output_
