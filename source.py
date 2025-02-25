@@ -42,7 +42,7 @@ def relu(input_):
     Returns :
     output : numpy.ndarray with relu applied
     """
-    
+
     zeros_ = np.zeros_like(input_)
     output_ = np.maximum(input_, zeros_)
     return output_
@@ -76,3 +76,16 @@ def linear(input_):
 
     output_ = input_
     return output_
+
+# Forward propagation #
+def forward_propagation(input_, Weights, Biases, activation_sequence : List):
+    """
+    input : numpy.ndarray - input matrix
+    Weights : List of weights in each layer
+    Biases : List of biases in each layer
+    activation_sequence = List of activation at the end of each layer
+    Returns : 
+    outs_ :  list of matrices which gives the post activations of all layers
+    """
+
+    
