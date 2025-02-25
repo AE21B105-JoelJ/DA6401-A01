@@ -42,6 +42,7 @@ def relu(input_):
     Returns :
     output : numpy.ndarray with relu applied
     """
+    
     zeros_ = np.zeros_like(input_)
     output_ = np.maximum(input_, zeros_)
     return output_
@@ -52,6 +53,7 @@ def sigmoid(input_):
     Returns :
     output : numpy.ndarray with sigmoid applied
     """
+
     output_ = 1 / (1 + np.exp(-input_))
     return output_
 
@@ -61,6 +63,7 @@ def tanh(input_):
     Returns :
     output : numpy.ndarray with tanh applied
     """
+
     output_ = (2 / (1 + np.exp(-2*input_))) - 1
     return output_
 
@@ -70,5 +73,6 @@ def linear(input_):
     Returns :
     output : numpy.ndarray with nothing applied
     """
+
     output_ = input_
     return output_
