@@ -64,3 +64,11 @@ def tanh(input_):
     output_ = (2 / (1 + np.exp(-2*input_))) - 1
     return output_
 
+def linear(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with nothing applied
+    """
+    output_ = input_
+    return output_
