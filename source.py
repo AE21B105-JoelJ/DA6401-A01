@@ -2,6 +2,7 @@
 from typing import List
 import numpy as np
 
+# Initialization #
 def init_zero_mat(Info : List[int], init_scheme = "random"):
     """
     This functions gets input of the sequence of choises for the hidden layer and neurons per layer and output zero initialized matrices.
@@ -9,6 +10,7 @@ def init_zero_mat(Info : List[int], init_scheme = "random"):
     Returns :
     List[numpy.ndarray], List[numpy.ndarray] : 2 List of numpy arrays oe for weights and one for biases.
     """
+
     init_scheme_all = ["Xavier", "random"]
     if init_scheme not in init_scheme_all:
         raise Exception("The Initializations scheme is either not valid or not appropriate !!!")
@@ -32,3 +34,14 @@ def init_zero_mat(Info : List[int], init_scheme = "random"):
         Biases.append(bias_matrix)
     
     return Weights, Biases
+
+# Activation functions #
+def relu(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with relu applied
+    """
+    zeros_ = np.zeros_like(input_)
+    output_ = np.maximum(input_, zeros_)
+    return output_
