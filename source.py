@@ -85,15 +85,38 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     Biases : List of biases in each layer
     activation_sequence = List of activation at the end of each layer
     Returns : 
-    outs_ :  list of matrices which gives the post activations of all layers
+    outs_ :  list of matrices which gives the post and pre activations of all layers
     """
 
     # Some assertions to be made 
     assert input_.shape[1] == Weights[0].shape[1], "The input dimentions does not match !!"
     assert len(Weights) == len(activation_sequence), "The activation sequence does not match with hidden layer !!"
 
+    batch_size, dim = input_.shape[0], input_.shape[1]
+    input_reshaped = input_.reshape(dim,batch_size)
     # Forward prop...
-    fp_matrices = [input_]
+    fp_pre_ac = []
+    fp_post_ac = []
     for i in range(len(Weights)):
         W, b = Weights[i], Biases[i]
-
+        activation = activation_sequence[i]
+        # computing pre activation
+        pre_ac = np.matmul(W,input_reshaped) + b
+        # appending to the pre activation matrix
+        fp_pre_ac.append(pre_ac)
+        # computing activation
+        if activation in ["sigmoid","relu","tanh","linear"]:
+            if activation == "sigmoid":
+                post_ac = sigmoid(pre_ac)
+            elif activation == "relu":
+                post_ac = relu(post_ac)
+            elif activation == "tanh":
+                post_ac = tanh(post_ac)
+            else:
+                post_ac = linear(post_ac)
+            # appending to the post activation matrix
+            fp_post_ac.append(post_ac)
+        else:
+            raise Exception("The activation function is not valid !!")
+    
+    return fp_pre_ac, fp_post_ac
