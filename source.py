@@ -85,7 +85,7 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     Biases : List of biases in each layer
     activation_sequence = List of activation at the end of each layer
     Returns : 
-    outs_ :  list of matrices which gives the post and pre activations of all layers
+    outs_ :  list of matrices which gives the output, post and pre activations of all layers
     """
 
     # Some assertions to be made 
@@ -109,14 +109,20 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
             if activation == "sigmoid":
                 post_ac = sigmoid(pre_ac)
             elif activation == "relu":
-                post_ac = relu(post_ac)
+                post_ac = relu(pre_ac)
             elif activation == "tanh":
-                post_ac = tanh(post_ac)
+                post_ac = tanh(pre_ac)
             else:
-                post_ac = linear(post_ac)
+                post_ac = linear(pre_ac)
             # appending to the post activation matrix
-            fp_post_ac.append(post_ac)
+            fp_post_ac.append(pre_ac)
         else:
             raise Exception("The activation function is not valid !!")
+
+        # rechanging the input for the next loop instance
+        input_reshaped = post_ac
     
-    return fp_pre_ac, fp_post_ac
+    # output rehaped
+    output = fp_post_ac[-1].reshape(batch_size,-1)
+    # return output, preactivations and post activations
+    return output, fp_pre_ac, fp_post_ac
