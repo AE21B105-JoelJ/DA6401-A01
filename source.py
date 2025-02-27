@@ -156,13 +156,13 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     # Some assertions to be made 
     assert input_.shape[1] == Weights[0].shape[1], "The input dimentions does not match !!"
     assert len(Weights) == len(activation_sequence), "The activation sequence does not match with hidden layer !!"
-    assert "softmax" in activation_sequence[:len(activation_sequence)-1], "softmax (as of now) cant be applied in intermediate layers !!"
+    assert "softmax" not in activation_sequence[:len(activation_sequence)-1], "softmax (as of now) cant be applied in intermediate layers !!"
 
     batch_size, dim = input_.shape[0], input_.shape[1]
     input_reshaped = input_.reshape(dim,batch_size)
     # Forward prop...
-    fp_pre_ac = []
-    fp_post_ac = []
+    fp_pre_ac = [input_reshaped]
+    fp_post_ac = [input_reshaped]
     for i in range(len(Weights)):
         W, b = Weights[i], Biases[i]
         activation = activation_sequence[i]
@@ -210,21 +210,63 @@ class Optimizer:
         grads_wrt_biases = []
         # Reshape y_true wrt our convention (dim, batch_size)
         batch_size, dim = y_true.shape[0], y_true.shape[1]
-        y_true_reshaped = y_true_reshaped.reshape(dim,batch_size)
+        y_true_reshaped = y_true.reshape(dim,batch_size)
         # Firstly find the gradient wrt to output layer
         ## Output activation
         output_activation_str = activation_sequence[-1]
         grads_wrt_postact = np.zeros_like(y_true_reshaped)
         output_ = post_ac[-1]
+        input_ = pre_ac[-1]
         if self.loss == "cross_entropy":
             grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
         elif self.loss == "binary_cross_entropy":
             grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
             grads_wrt_postact[y_true_reshaped == 0] =  1/(1 - output_[y_true_reshaped == 0])
-        elif self.loss == "squared_error_loss":
+        elif self.loss == "mean_squared_error":
             grads_wrt_postact = -2*(y_true_reshaped - output_)*output_
         ## Output layer preactivation
         if output_activation_str == "linear":
-            grads_wrt_preac = grads_wrt_postact*diff_linear(pre_ac[-1])
+            grads_wrt_preac = grads_wrt_postact*diff_linear(input_)
+        elif output_activation_str == "softmax":
+            grads_wrt_preac = (-1/output_[y_true_reshaped == 1])*diff_softmax(input_,y_true_reshaped)
         elif output_activation_str == "sigmoid":
-            pass
+            grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
+        elif output_activation_str == "tanh":
+            grads_wrt_preac = grads_wrt_postact*diff_tanh(input_)
+        elif output_activation_str == "relu":
+            grads_wrt_preac = grads_wrt_postact*diff_relu(input_)
+
+        for layer in range(1,len(Weights)+1):
+            input_ = pre_ac[-layer-1]
+            output_ = post_ac[-layer-1]
+            W = Weights[-layer]
+            b = Biases[-layer]
+            # Finding gradients with respect to weights and biases (average along batch size)
+            print(f" Layer : {-layer}  \n W : {W.shape} \n B : {b.shape} \n preac : {grads_wrt_preac.shape}")
+            grads_W = (1/batch_size)*np.sum(np.einsum("ij,kj->ikj",grads_wrt_preac,output_),axis=2)
+            grads_b = (1/batch_size)*np.sum(grads_wrt_preac, axis = 1,keepdims=True)
+            # check the shapes of the gradient matches with the matrix size
+            assert grads_W.shape == Weights[-layer].shape, f"Shape of grad_W and W at layer : {-layer} does not match"
+            assert grads_b.shape == Biases[-layer].shape, f"Shape of grad_b and B at layer : {-layer} does not match"
+            # After the gradient shapes match..
+            grads_wrt_weights.append(grads_W)
+            grads_wrt_biases.append(grads_b)
+            if layer == len(Weights):
+                break
+            activation = activation_sequence[-layer-1]
+            # Finding gradients with respect to preactivation and post
+            grads_wrt_postact = np.matmul(W.T,grads_wrt_preac)
+            if activation == "linear":
+                grads_wrt_preac = grads_wrt_postact*diff_linear(input_)
+            elif activation == "relu":
+                grads_wrt_preac = grads_wrt_postact*diff_relu(input_)
+            elif activation == "sigmoid":
+                grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
+            elif activation == "tanh":
+                grads_wrt_preac = grads_wrt_postact*diff_tanh(input_)
+        
+        # assert whether the no_of weights and biasses gradient matrices matches the shape
+        assert len(grads_wrt_weights) == len(Weights), "The number of matrices gradient and original do not match"
+        assert len(grads_wrt_biases) == len(Biases), "The number of matrices gradient and original do not match"
+
+        return grads_wrt_weights, grads_wrt_biases
