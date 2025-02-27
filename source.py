@@ -84,6 +84,59 @@ def softmax(input_):
     output : numpy.ndarray with softmax actiavtion
     """
 
+    output_ = np.exp(input_)/np.sum(np.exp(input_), axis = 0)
+    return output_
+
+# Activation functions Derivatives #
+def diff_relu(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with differentiated relu applied
+    """
+
+    output_ = np.zeros_like(input_)
+    output_[input_ > 0] = 1
+    return output_
+
+def diff_sigmoid(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with differentiated sigmoid applied
+    """
+
+    output_ = sigmoid(input_) * (1 - sigmoid(input_))
+    return output_
+
+def diff_tanh(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with differentiated tanh applied
+    """
+
+    output_ = 1 - tanh(input_)**2
+    return output_
+
+def diff_linear(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with differentiated linear applied
+    """
+
+    output_ = np.ones_like(input_)
+    return output_
+
+def diff_softmax(input_, ): # Not completed yet...
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with softmax differentiation actiavtion
+    """
+
+    softmax_output = softmax(input_)
     output_ = np.exp(input_)/np.sum(np.exp(input_))
     return output_
 
@@ -148,11 +201,28 @@ class Optimizer:
         self.optimizer = optimizer
         self.history = None
     
-    def backprop(self, Weights, Biases, pre_ac, post_ac, activation_sequence):
+    def backprop_grads(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        grads_wrt_postact = None
+        grads_wrt_preac = None
+        grads_wrt_weights = []
+        grads_wrt_biases = []
+        # Reshape y_true wrt our convention (dim, batch_size)
+        batch_size, dim = y_true.shape[0], y_true.shape[1]
+        y_true_reshaped = y_true_reshaped.reshape(dim,batch_size)
         # Firstly find the gradient wrt to output layer
         ## Output activation
         output_activation_str = activation_sequence[-1]
-        if output_activation_str == "softmax":
+        grads_wrt_postact = np.zeros_like(y_true_reshaped)
+        output_ = post_ac[-1]
+        if self.loss == "cross_entropy":
+            grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
+        elif self.loss == "binary_cross_entropy":
+            grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
+            grads_wrt_postact[y_true_reshaped == 0] =  1/(1 - output_[y_true_reshaped == 0])
+        elif self.loss == "squared_error_loss":
+            grads_wrt_postact = -2*(y_true_reshaped - output_)*output_
+        ## Output layer preactivation
+        if output_activation_str == "linear":
+            grads_wrt_preac = grads_wrt_postact*diff_linear(pre_ac[-1])
+        elif output_activation_str == "sigmoid":
             pass
-
-        
