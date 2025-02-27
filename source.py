@@ -230,12 +230,17 @@ def batchloader(X_data, y_data, batch_size = 32, shuffle = True):
     return zip(batches_x, batches_y)
 
 class Optimizer:
-    def __init__(self, loss = "mean_squared_error", optimizer = "gd"):
+    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
         assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"], "Optimizer is not valid"
         self.loss = loss
         self.optimizer = optimizer
         self.history = None
+        self.learning_rate = learning_rate
+        # for momentum based tracking
+        self.momentum = momentum
+        self.update_mom_w = None
+        self.update_mom_b = None
     
     def backprop_grads(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -318,4 +323,53 @@ class Optimizer:
 
         return grads_wrt_weights, grads_wrt_biases
     
-    def gd_step(self, )
+    def gd_step(self, Weights, Biases, grads_wrt_weights, grads_wrt_biases):
+        """
+        Does one step gradient descent of weights (does in place)
+        Input:
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        grads_wrt_weights : list of gradient weight matrices list[<numpy.ndarray>]
+        grads_wrt_biases : list of gradient bias matrices list[<numpy.ndarray>]
+        Output: 
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        """
+
+        for i in range(len(Weights)):
+            Weights[i] = Weights[i] - self.learning_rate*grads_wrt_weights[-i-1]
+            Biases[i] = Biases[i] - self.learning_rate*grads_wrt_biases[-i-1]
+
+        return Weights, Biases
+    
+    def sgd_step(self, Weights, Biases, grads_wrt_weights, grads_wrt_biases):
+        """
+        Does one step gradient descent of weights with momentum (does in place)
+        Input:
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        grads_wrt_weights : list of gradient weight matrices list[<numpy.ndarray>]
+        grads_wrt_biases : list of gradient bias matrices list[<numpy.ndarray>]
+        Output: 
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        """
+
+        # Initialize the matrices (if not done already)
+        if self.update_mom_b is None or self.update_mom_b is None :
+            self.update_mom_b, self.update_mom_w = [], []
+            for i in range(len(Weights)):
+                self.update_mom_w.append(np.zeros_like(Weights[i],dtype=np.longdouble))
+                self.update_mom_b.append(np.zeros_like(Biases[i],dtype=np.longdouble))
+
+        # update with momentum
+        for i in range(len(Weights)):
+            # update eqn
+            self.update_mom_w[i] = self.momentum*self.update_mom_w + self.learning_rate*grads_wrt_weights[-i-1]
+            self.update_mom_b[i] = self.momentum*self.update_mom_b + self.learning_rate*grads_wrt_biases[-i-1]
+            # step eqn
+            Weights[i] = Weights[i] - self.update_mom_w[i]
+            Biases[i] = Biases[i] - self.update_mom_b[i]
+        
+        # returning the weights and biases
+        return Weights, Biases
