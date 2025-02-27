@@ -129,7 +129,7 @@ def diff_linear(input_):
     output_ = np.ones_like(input_)
     return output_
 
-def diff_softmax(input_, ): # Not completed yet...
+def diff_softmax(input_, y_reshaped): # Not completed yet...
     """
     input : numpy.ndarray 
     Returns :
@@ -137,7 +137,9 @@ def diff_softmax(input_, ): # Not completed yet...
     """
 
     softmax_output = softmax(input_)
-    output_ = np.exp(input_)/np.sum(np.exp(input_))
+    output_ = np.zeros_like(input_)
+    output_[y_reshaped == 1] = softmax_output[y_reshaped == 1]
+    output_ = output_ - softmax_output*(softmax_output[y_reshaped == 1])
     return output_
 
 # Forward propagation #
