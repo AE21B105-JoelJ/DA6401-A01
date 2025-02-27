@@ -207,6 +207,19 @@ class Optimizer:
         self.history = None
     
     def backprop_grads(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        """
+        Input :
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        pre_ac : pre-activations of all layers list[<numpy.ndarray>]
+        post_ac : post-activations of all layers list[<numpy.ndarray>]
+        y_true : true labels <numpy.ndarray>
+        activation_sequence : activation of each layer list[str]
+        Output:
+        grads_wrt_w : list of gradient of W matrices list[<numpy.ndarray>]
+        grads_wrt_b : list of gradient of b matrices list[<numpy.ndarray>]
+        """
+
         grads_wrt_postact = None
         grads_wrt_preac = None
         grads_wrt_weights = []
@@ -275,6 +288,16 @@ class Optimizer:
         return grads_wrt_weights, grads_wrt_biases
     
     def batchloader(self, X_data, y_data, batch_size = 32, shuffle = True):
+        """
+        Input:
+        X_data : Feature data <numpy.ndarray>
+        y_data : labels data <numpy.ndarray>
+        batch_size : batch size needed int
+        shuffle : boolean (if shuffle is needed)
+        Output:
+        batches : zip(X_batch,y_batch) zip dataloader.
+        """
+        
         batches_x = []
         batches_y = []
         length_ = len(X_data)
