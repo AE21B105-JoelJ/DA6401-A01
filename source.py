@@ -77,6 +77,16 @@ def linear(input_):
     output_ = input_
     return output_
 
+def softmax(input_):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with softmax actiavtion
+    """
+
+    output_ = np.exp(input_)/np.sum(np.exp(input_))
+    return output_
+
 # Forward propagation #
 def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     """
@@ -91,6 +101,7 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     # Some assertions to be made 
     assert input_.shape[1] == Weights[0].shape[1], "The input dimentions does not match !!"
     assert len(Weights) == len(activation_sequence), "The activation sequence does not match with hidden layer !!"
+    assert "softmax" in activation_sequence[:len(activation_sequence)-1], "softmax (as of now) cant be applied in intermediate layers !!"
 
     batch_size, dim = input_.shape[0], input_.shape[1]
     input_reshaped = input_.reshape(dim,batch_size)
@@ -105,13 +116,15 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
         # appending to the pre activation matrix
         fp_pre_ac.append(pre_ac)
         # computing activation
-        if activation in ["sigmoid","relu","tanh","linear"]:
+        if activation in ["sigmoid","relu","tanh","softmax","linear"]:
             if activation == "sigmoid":
                 post_ac = sigmoid(pre_ac)
             elif activation == "relu":
                 post_ac = relu(pre_ac)
             elif activation == "tanh":
                 post_ac = tanh(pre_ac)
+            elif activation == "softmax":
+                post_ac = softmax(pre_ac)
             else:
                 post_ac = linear(pre_ac)
             # appending to the post activation matrix
@@ -126,3 +139,20 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     output = fp_post_ac[-1].reshape(batch_size,-1)
     # return output, preactivations and post activations
     return output, fp_pre_ac, fp_post_ac
+
+class Optimizer:
+    def __init__(self, loss = "mean_squared_error", optimizer = "gd"):
+        assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
+        assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"]
+        self.loss = loss
+        self.optimizer = optimizer
+        self.history = None
+    
+    def backprop(self, Weights, Biases, pre_ac, post_ac, activation_sequence):
+        # Firstly find the gradient wrt to output layer
+        ## Output activation
+        output_activation_str = activation_sequence[-1]
+        if output_activation_str == "softmax":
+            pass
+
+        
