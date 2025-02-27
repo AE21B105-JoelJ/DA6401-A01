@@ -29,6 +29,9 @@ def init_zero_mat(Info : List[int], init_scheme = "random"):
             weight_matrix = np.random.randn(Info[i], Info[i-1])*std # Creating weight matrix for each layer
             bias_matrix = np.random.randn(Info[i], 1)*std # Creating bias matrix for each layer
 
+            # Converting to more precise type
+            weight_matrix = weight_matrix.astype(np.longdouble)
+            bias_matrix = bias_matrix.astype(np.longdouble)
         # Append the weight and bias matrix ot original list #
         Weights.append(weight_matrix)
         Biases.append(bias_matrix)
@@ -183,7 +186,7 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
             else:
                 post_ac = linear(pre_ac)
             # appending to the post activation matrix
-            fp_post_ac.append(pre_ac)
+            fp_post_ac.append(post_ac)
         else:
             raise Exception("The activation function is not valid !!")
 
@@ -242,7 +245,7 @@ class Optimizer:
             W = Weights[-layer]
             b = Biases[-layer]
             # Finding gradients with respect to weights and biases (average along batch size)
-            print(f" Layer : {-layer}  \n W : {W.shape} \n B : {b.shape} \n preac : {grads_wrt_preac.shape}")
+            # (- checker ) print(f" Layer : {-layer}  \n W : {W.shape} \n B : {b.shape} \n preac : {grads_wrt_preac.shape}")
             grads_W = (1/batch_size)*np.sum(np.einsum("ij,kj->ikj",grads_wrt_preac,output_),axis=2)
             grads_b = (1/batch_size)*np.sum(grads_wrt_preac, axis = 1,keepdims=True)
             # check the shapes of the gradient matches with the matrix size
