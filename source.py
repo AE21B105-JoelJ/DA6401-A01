@@ -198,6 +198,37 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     # return output, preactivations and post activations
     return output, fp_pre_ac, fp_post_ac
 
+def batchloader(X_data, y_data, batch_size = 32, shuffle = True):
+    """
+    Input:
+    X_data : Feature data <numpy.ndarray>
+    y_data : labels data <numpy.ndarray>
+    batch_size : batch size needed int
+    shuffle : boolean (if shuffle is needed)
+    Output:
+    batches : zip(X_batch,y_batch) zip dataloader.
+    """
+
+    batches_x = []
+    batches_y = []
+    length_ = len(X_data)
+    # Creating the indexed for batching
+    if shuffle:
+        ind = np.random.permutation(length_)
+    else:
+        ind = np.arange(length_)
+    # num of batches 
+    num_batches = (length_ // batch_size) + 1 if length_%batch_size !=0 else length_//batch_size
+    for i in range(num_batches):
+        if i == num_batches - 1:
+            batches_x.append(X_data[i*batch_size:])
+            batches_y.append(y_data[i*batch_size:])
+            break
+        batches_x.append(X_data[i*batch_size:(i+1)*batch_size])
+        batches_y.append(y_data[i*batch_size:(i+1)*batch_size])
+    # returning a zip of the batch
+    return zip(batches_x, batches_y)
+
 class Optimizer:
     def __init__(self, loss = "mean_squared_error", optimizer = "gd"):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
@@ -287,34 +318,4 @@ class Optimizer:
 
         return grads_wrt_weights, grads_wrt_biases
     
-    def batchloader(self, X_data, y_data, batch_size = 32, shuffle = True):
-        """
-        Input:
-        X_data : Feature data <numpy.ndarray>
-        y_data : labels data <numpy.ndarray>
-        batch_size : batch size needed int
-        shuffle : boolean (if shuffle is needed)
-        Output:
-        batches : zip(X_batch,y_batch) zip dataloader.
-        """
-        
-        batches_x = []
-        batches_y = []
-        length_ = len(X_data)
-        # Creating the indexed for batching
-        if shuffle:
-            ind = np.random.permutation(length_)
-        else:
-            ind = np.arange(length_)
-        # num of batches 
-        num_batches = (length_ // batch_size) + 1 if length_%batch_size !=0 else length_//batch_size
-        for i in range(num_batches):
-            if i == num_batches - 1:
-                batches_x.append(X_data[i*batch_size:])
-                batches_y.append(y_data[i*batch_size:])
-                break
-            batches_x.append(X_data[i*batch_size:(i+1)*batch_size])
-            batches_y.append(y_data[i*batch_size:(i+1)*batch_size])
-        # returning a zip of the batch
-        return zip(batches_x, batches_y)
-        
+    def gd_step(self, )
