@@ -201,7 +201,7 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
 class Optimizer:
     def __init__(self, loss = "mean_squared_error", optimizer = "gd"):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
-        assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"]
+        assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"], "Optimizer is not valid"
         self.loss = loss
         self.optimizer = optimizer
         self.history = None
@@ -273,3 +273,25 @@ class Optimizer:
         assert len(grads_wrt_biases) == len(Biases), "The number of matrices gradient and original do not match"
 
         return grads_wrt_weights, grads_wrt_biases
+    
+    def batchloader(self, X_data, y_data, batch_size = 32, shuffle = True):
+        batches_x = []
+        batches_y = []
+        length_ = len(X_data)
+        # Creating the indexed for batching
+        if shuffle:
+            ind = np.random.permutation(length_)
+        else:
+            ind = np.arange(length_)
+        # num of batches 
+        num_batches = (length_ // batch_size) + 1 if length_%batch_size !=0 else length_//batch_size
+        for i in range(num_batches):
+            if i == num_batches - 1:
+                batches_x.append(X_data[i*batch_size:])
+                batches_y.append(y_data[i*batch_size:])
+                break
+            batches_x.append(X_data[i*batch_size:(i+1)*batch_size])
+            batches_y.append(y_data[i*batch_size:(i+1)*batch_size])
+        # returning a zip of the batch
+        return zip(batches_x, batches_y)
+        
