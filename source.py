@@ -38,6 +38,17 @@ def init_mat(Info : List[int], init_scheme = "random"):
     
     return Weights, Biases
 
+def one_hot_numpy(input_):
+    """
+    input : categorical numpy array (numbers)
+    ouput : One hot encoded array
+    """
+
+    num_classes = np.max(input_) + 1
+    one_hot_enc = np.zeros(shape = (len(input_), num_classes), dtype= np.longdouble)
+    one_hot_enc[np.arange(len(input_)) , input_] = 1.0
+    return one_hot_enc
+
 # Activation functions #
 def relu(input_):
     """
