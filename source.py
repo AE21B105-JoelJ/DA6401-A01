@@ -262,9 +262,16 @@ class Batchloader:
     def __iter__(self):
         return self
     
-    
+    def __next__(self):
+        if self.head >= len(self.X):
+            self.initialize()
+            raise StopIteration # to stop the batchloader
         
-
+        tail = self.head + self.batch_size
+        X_batch, y_batch = self.X[self.ind[self.head:tail]], self.y[self.ind[self.head:tail]]
+        self.head = tail
+        return X_batch, y_batch
+        
 class Optimizer:
     def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
