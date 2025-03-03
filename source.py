@@ -243,6 +243,28 @@ def batchloader(X_data, y_data, batch_size = 32, shuffle = True):
     # returning a zip of the batch
     return (batches_x, batches_y)
 
+class Batchloader:
+    def __init__(self, X, y, batch_size = 32, shuffle = False):
+        self.X = X
+        self.y = y
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        if self.shuffle:
+            self.ind = np.random.permutation(len(X))
+        else:
+            self.ind = np.arange(len(X))
+
+        self.initialize()
+
+    def initialize(self):
+        self.head = 0
+
+    def __iter__(self):
+        return self
+    
+    
+        
+
 class Optimizer:
     def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
