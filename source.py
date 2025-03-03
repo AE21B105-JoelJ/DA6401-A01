@@ -376,6 +376,13 @@ class Optimizer:
         # returning the weights and biases
         return Weights, Biases
     
+    def stepper(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        # Step accordin to the optimizer
+        if self.optimizer == "sgd":
+            return self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+        elif self.optimizer == "gd":
+            return self.gd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+    
 class FeedForwardNeuralNetwork:
     def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,):
         self.arch = arch
