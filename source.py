@@ -323,7 +323,7 @@ class Optimizer:
 
         return grads_wrt_weights, grads_wrt_biases
     
-    def gd_step(self, Weights, Biases, grads_wrt_weights, grads_wrt_biases):
+    def gd_step(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
         Does one step gradient descent of weights (does in place)
         Input:
@@ -335,14 +335,14 @@ class Optimizer:
         Weights : list of weight matrices list[<numpy.ndarray>]
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
-
+        grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         for i in range(len(Weights)):
             Weights[i] = Weights[i] - self.learning_rate*grads_wrt_weights[-i-1]
             Biases[i] = Biases[i] - self.learning_rate*grads_wrt_biases[-i-1]
 
         return Weights, Biases
     
-    def sgd_step(self, Weights, Biases, grads_wrt_weights, grads_wrt_biases):
+    def sgd_step(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
         Does one step gradient descent of weights with momentum (does in place)
         Input:
@@ -354,6 +354,8 @@ class Optimizer:
         Weights : list of weight matrices list[<numpy.ndarray>]
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
+
+        grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
 
         # Initialize the matrices (if not done already)
         if self.update_mom_b is None or self.update_mom_b is None :
