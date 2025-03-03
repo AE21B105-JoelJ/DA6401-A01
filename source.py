@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 # Initialization #
-def init_zero_mat(Info : List[int], init_scheme = "random"):
+def init_mat(Info : List[int], init_scheme = "random"):
     """
     This functions gets input of the sequence of choises for the hidden layer and neurons per layer and output zero initialized matrices.
     Info : List (Example : [20, 50, 50, 10] Tells that input : 20, first hidden layer : 50, second hidden layer : 50 and output layer : 10) 
@@ -375,3 +375,22 @@ class Optimizer:
         
         # returning the weights and biases
         return Weights, Biases
+    
+class FeedForwardNeuralNetwork:
+    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, momentum, initialization):
+        self.arch = arch
+        self.activation_seqence = activation_sequence
+        self.optimizer = optimizer
+        self.learning_rate  = learning_rate
+        self.loss = loss
+        self.momentum = momentum
+        self.initialization = initialization
+
+        # Some assertions to be made
+        assert len(self.activation_seqence) == len(self.arch) - 1 , "Number of layers and activation do not match"
+
+        # Initialization of the weights
+        self.weights, self.biases = init_mat(Info=self.arch, init_scheme= self.initialization)
+
+    def forward_call():
+        pass
