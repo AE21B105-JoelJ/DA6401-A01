@@ -20,8 +20,8 @@ def init_mat(Info : List[int], init_scheme = "random"):
     for i in range(1,len(Info)):
         if init_scheme == "random":
             # Here we consider uniformly random from [-1,1]
-            weight_matrix = np.random.uniform(low = -1.0, high = 1.0, size=(Info[i],Info[i-1])) # Creating weight matrix for each layer
-            bias_matrix = np.random.uniform(low = -1.0, high = 1.0, size=(Info[i],1)) # Creating bias matrix for each layer
+            weight_matrix = np.random.randn(Info[i],Info[i-1])*0.1 # Creating weight matrix for each layer
+            bias_matrix = np.random.randn(Info[i],1)*0.1 # Creating bias matrix for each layer
 
         elif init_scheme == "Xavier":
             input_output = Info[i-1] + Info[i]
@@ -45,7 +45,7 @@ def one_hot_numpy(input_):
     """
 
     num_classes = np.max(input_) + 1
-    one_hot_enc = np.zeros(shape = (len(input_), num_classes), dtype= np.longdouble)
+    one_hot_enc = np.zeros(shape = (len(input_), num_classes), dtype= np.int64)
     one_hot_enc[np.arange(len(input_)) , input_] = 1.0
     return one_hot_enc
 
@@ -97,7 +97,9 @@ def softmax(input_):
     Returns :
     output : numpy.ndarray with softmax actiavtion
     """
-
+    # smoothing for initial phases ...
+    #if abs(np.max(input_)) > 100:
+    #   input_ = (input_ - np.mean(input_, axis = 0)) / np.var(input_, axis = 0)
     output_ = np.exp(input_)/np.sum(np.exp(input_), axis = 0)
     return output_
 
@@ -182,6 +184,7 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
         activation = activation_sequence[i]
         # computing pre activation
         pre_ac = np.matmul(W,input_reshaped) + b
+        # (DEBUG) print(input_reshaped.min(), input_reshaped.max(), W.min(), W.max(), b.min(), b.max())
         # appending to the pre activation matrix
         fp_pre_ac.append(pre_ac)
         # computing activation
@@ -238,7 +241,7 @@ def batchloader(X_data, y_data, batch_size = 32, shuffle = True):
         batches_x.append(X_data[i*batch_size:(i+1)*batch_size])
         batches_y.append(y_data[i*batch_size:(i+1)*batch_size])
     # returning a zip of the batch
-    return zip(batches_x, batches_y)
+    return (batches_x, batches_y)
 
 class Optimizer:
     def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0):
@@ -412,23 +415,22 @@ class FeedForwardNeuralNetwork:
         self.weights, self.biases = init_mat(Info=self.arch, init_scheme= self.initialization)
 
     def forward_call(self, inputs_, is_batch_alone = False, is_batch_both = False):
+        outputs_list = []
         if is_batch_alone:
-            outputs_list = []
             for X in inputs_:
                 out_batch, _, _ = forward_propagation(X, self.weights, self.biases, activation_sequence=self.activation_seqence)
                 outputs_list.append(out_batch)
             outputs_ = outputs_list[0]
             for i in range(1,len(outputs_list)):
-                outputs_ = np.append(outputs_, outputs_list[i])
+                outputs_ = np.append(outputs_, outputs_list[i], axis = 0)
 
         elif is_batch_both:
-            outputs_list = []
-            for X, _ in inputs_:
+            for X in inputs_[0]:
                 out_batch, _, _ = forward_propagation(X, self.weights, self.biases, activation_sequence=self.activation_seqence)
                 outputs_list.append(out_batch)
             outputs_ = outputs_list[0]
             for i in range(1,len(outputs_list)):
-                outputs_ = np.append(outputs_, outputs_list[i])
+                outputs_ = np.append(outputs_, outputs_list[i], axis = 0)
         else:
             outputs_, _, _ = forward_propagation(inputs_, self.weights, self.biases, activation_sequence=self.activation_seqence)
 
