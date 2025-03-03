@@ -20,8 +20,8 @@ def init_mat(Info : List[int], init_scheme = "random"):
     for i in range(1,len(Info)):
         if init_scheme == "random":
             # Here we consider uniformly random from [-1,1]
-            weight_matrix = np.random.randn(Info[i],Info[i-1])*0.1 # Creating weight matrix for each layer
-            bias_matrix = np.random.randn(Info[i],1)*0.1 # Creating bias matrix for each layer
+            weight_matrix = np.random.randn(Info[i],Info[i-1])*0.01 # Creating weight matrix for each layer
+            bias_matrix = np.random.randn(Info[i],1)*0.01 # Creating bias matrix for each layer
 
         elif init_scheme == "Xavier":
             input_output = Info[i-1] + Info[i]
@@ -253,7 +253,7 @@ class Batchloader:
             self.ind = np.random.permutation(len(X))
         else:
             self.ind = np.arange(len(X))
-
+        # Initialize the header...
         self.initialize()
 
     def initialize(self):
@@ -454,7 +454,7 @@ class FeedForwardNeuralNetwork:
                 outputs_ = np.append(outputs_, outputs_list[i], axis = 0)
 
         elif is_batch_both:
-            for X in inputs_[0]:
+            for X, _ in inputs_:
                 out_batch, _, _ = forward_propagation(X, self.weights, self.biases, activation_sequence=self.activation_seqence)
                 outputs_list.append(out_batch)
             outputs_ = outputs_list[0]
@@ -463,7 +463,10 @@ class FeedForwardNeuralNetwork:
         else:
             outputs_, _, _ = forward_propagation(inputs_, self.weights, self.biases, activation_sequence=self.activation_seqence)
 
-        return outputs_
+        # threshold the outputs
+        out_final = np.zeros_like(outputs_, dtype= np.int64)
+        out_final[np.arange(len(outputs_)),np.argmax(outputs_,axis=1)] = 1
+        return out_final
     
     def update_params(self, Weights, Biases):
         self.weights = Weights
