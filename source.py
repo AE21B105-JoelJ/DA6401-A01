@@ -227,7 +227,7 @@ def batchloader(X_data, y_data, batch_size = 32, shuffle = True):
         batches_x.append(X_data[i*batch_size:(i+1)*batch_size])
         batches_y.append(y_data[i*batch_size:(i+1)*batch_size])
     # returning a zip of the batch
-    return batches_x, batches_y
+    return zip(batches_x, batches_y)
 
 class Optimizer:
     def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0):
@@ -400,10 +400,19 @@ class FeedForwardNeuralNetwork:
         # Initialization of the weights
         self.weights, self.biases = init_mat(Info=self.arch, init_scheme= self.initialization)
 
-    def forward_call(self, inputs_, is_batchloaded = False):
-        if is_batchloaded:
+    def forward_call(self, inputs_, is_batch_alone = False, is_batch_both = False):
+        if is_batch_alone:
             outputs_list = []
             for X in inputs_:
+                out_batch, _, _ = forward_propagation(X, self.weights, self.biases, activation_sequence=self.activation_seqence)
+                outputs_list.append(out_batch)
+            outputs_ = outputs_list[0]
+            for i in range(1,len(outputs_list)):
+                outputs_ = np.append(outputs_, outputs_list[i])
+
+        elif is_batch_both:
+            outputs_list = []
+            for X, _ in inputs_:
                 out_batch, _, _ = forward_propagation(X, self.weights, self.biases, activation_sequence=self.activation_seqence)
                 outputs_list.append(out_batch)
             outputs_ = outputs_list[0]
@@ -424,4 +433,4 @@ class FeedForwardNeuralNetwork:
         # Do one optimizer step
         Weights, Biases = self.Optimizer_class.stepper(self.weights, self.biases, preac, postac, y_train, self.activation_seqence)
         # Update the weights
-        self.update_params(Weights,Biases)
+        self.update_params(Weights, Biases)
