@@ -377,7 +377,7 @@ class Optimizer:
         return Weights, Biases
     
 class FeedForwardNeuralNetwork:
-    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, momentum, initialization):
+    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,):
         self.arch = arch
         self.activation_seqence = activation_sequence
         self.optimizer = optimizer
@@ -386,6 +386,7 @@ class FeedForwardNeuralNetwork:
         self.momentum = momentum
         self.initialization = initialization
 
+        self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,momentum=self.momentum)
         # Some assertions to be made
         assert len(self.activation_seqence) == len(self.arch) - 1 , "Number of layers and activation do not match"
 
@@ -406,4 +407,14 @@ class FeedForwardNeuralNetwork:
 
         return outputs_
     
-    
+    def update_params(self, Weights, Biases):
+        self.weights = Weights
+        self.biases = Biases
+
+    def train_step(self, X_train, y_train):
+        # Forward propagation
+        _, preac, postac = forward_propagation(X_train, self.weights, self.biases, activation_sequence = self.activation_seqence)
+        # Do one optimizer step
+        Weights, Biases = self.Optimizer_class.stepper(self.weights, self.biases, preac, postac, y_train, self.activation_seqence)
+        # Update the weights
+        self.update_params(Weights,Biases)
