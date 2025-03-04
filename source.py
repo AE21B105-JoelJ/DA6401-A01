@@ -217,7 +217,7 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
             raise Exception("The activation function is not valid !!")
 
         # rechanging the input for the next loop instance
-        input_reshaped = post_ac
+        input_reshaped = post_ac.copy()
     
     # output rehaped
     output = fp_post_ac[-1].T
@@ -326,16 +326,22 @@ class Optimizer:
         input_ = pre_ac[-1]
         if self.loss == "cross_entropy":
             grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
+            #grads_wrt_postact = -1*np.ones_like(grads_wrt_postact)/(output_[y_true_reshaped == 1])
         elif self.loss == "binary_cross_entropy":
-            grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
-            grads_wrt_postact[y_true_reshaped == 0] =  1/(1 - output_[y_true_reshaped == 0])
+            grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1] / dim
+            grads_wrt_postact[y_true_reshaped == 0] =  1/(1 - output_[y_true_reshaped == 0]) / dim
         elif self.loss == "mean_squared_error":
-            grads_wrt_postact = -2*(y_true_reshaped - output_)*output_
+            grads_wrt_postact = -2*(y_true_reshaped - output_) # changed to correct one...
         ## Output layer preactivation
         if output_activation_str == "linear":
             grads_wrt_preac = grads_wrt_postact*diff_linear(input_)
-        elif output_activation_str == "softmax":
-            grads_wrt_preac = (-1/output_[y_true_reshaped == 1])*diff_softmax(input_,y_true_reshaped)
+        elif output_activation_str == "softmax": ## SOFTMAX NOT FIXED YET ##
+            grads_wrt_preac_1 = grads_wrt_postact*diff_softmax(input_,y_true_reshaped)
+            e_l = np.zeros_like(output_)
+            e_l[y_true_reshaped == 1] = 1
+            grads_wrt_preac = - (e_l - output_) / batch_size ## CHK ##
+
+            print(grads_wrt_preac_1, "\n", grads_wrt_preac)
         elif output_activation_str == "sigmoid":
             grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
         elif output_activation_str == "tanh":
@@ -376,7 +382,7 @@ class Optimizer:
         assert len(grads_wrt_weights) == len(Weights), "The number of matrices gradient and original do not match"
         assert len(grads_wrt_biases) == len(Biases), "The number of matrices gradient and original do not match"
 
-        return grads_wrt_weights, grads_wrt_biases
+        return grads_wrt_weights[::-1], grads_wrt_biases[::-1]
     
     def gd_step(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -392,8 +398,8 @@ class Optimizer:
         """
         grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         for i in range(len(Weights)):
-            Weights[i] = Weights[i] - self.learning_rate*grads_wrt_weights[-i-1]
-            Biases[i] = Biases[i] - self.learning_rate*grads_wrt_biases[-i-1]
+            Weights[i] = Weights[i] - self.learning_rate*grads_wrt_weights[i]
+            Biases[i] = Biases[i] - self.learning_rate*grads_wrt_biases[i]
 
         return Weights, Biases
     
@@ -422,8 +428,8 @@ class Optimizer:
         # update with momentum
         for i in range(len(Weights)):
             # update eqn
-            self.update_mom_w[i] = self.momentum*self.update_mom_w + self.learning_rate*grads_wrt_weights[-i-1]
-            self.update_mom_b[i] = self.momentum*self.update_mom_b + self.learning_rate*grads_wrt_biases[-i-1]
+            self.update_mom_w[i] = self.momentum*self.update_mom_w + self.learning_rate*grads_wrt_weights[i]
+            self.update_mom_b[i] = self.momentum*self.update_mom_b + self.learning_rate*grads_wrt_biases[i]
             # step eqn
             Weights[i] = Weights[i] - self.update_mom_w[i]
             Biases[i] = Biases[i] - self.update_mom_b[i]
