@@ -91,19 +91,17 @@ def linear(input_):
     output_ = input_
     return output_
 
-def softmax(input_):
+def softmax(input_, safe = True):
     """
     input : numpy.ndarray 
     Returns :
     output : numpy.ndarray with softmax actiavtion
     """
-    # smoothing for initial phases ...
-    #if abs(np.max(input_)) > 100:
-    #   input_ = (input_ - np.mean(input_, axis = 0)) / np.var(input_, axis = 0)
-    output_ = np.exp(input_)/np.sum(np.exp(input_), axis = 0, keepdims=True)
-    #print(np.exp(input_))
-    #print(np.sum(np.exp(input_), axis = 0, keepdims=True))
-    #print(output_)
+    if safe:
+        inputs_safe = input_ - np.max(input_, axis = 0,keepdims=True)
+        output_ = np.exp(inputs_safe )/np.sum(np.exp(inputs_safe), axis = 0, keepdims=True)
+    else:
+        output_ = np.exp(input_)/np.sum(np.exp(input_), axis = 0, keepdims=True)
     return output_
 
 # Activation functions Derivatives #
@@ -167,7 +165,8 @@ def find_loss(y_pred, y_true, loss = "mean_squared_error"):
     elif loss == "binary_cross_entropy":
         output_ = (-1/len(y_true))*np.sum(y_true*np.log(y_pred) + (1-y_true)*np.log(1-y_pred))
     elif loss == "cross_entropy":
-        output_ = (-1/len(y_true))*np.sum(np.log(y_pred[y_true == 1]))
+        #output_ = (-1/len(y_true))*np.sum(np.log(y_pred[y_true == 1]))
+        output_ = (-1/len(y_true))*np.sum(np.log(y_pred)*y_true)
     return np.squeeze(output_)
 
 # Forward propagation #
@@ -325,7 +324,9 @@ class Optimizer:
         output_ = post_ac[-1]
         input_ = pre_ac[-1]
         if self.loss == "cross_entropy":
-            grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
+            if output_activation_str == "softmax":
+                pass
+            #grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
             #grads_wrt_postact = -1*np.ones_like(grads_wrt_postact)/(output_[y_true_reshaped == 1])
         elif self.loss == "binary_cross_entropy":
             grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1] / dim
@@ -339,9 +340,9 @@ class Optimizer:
             grads_wrt_preac_1 = grads_wrt_postact*diff_softmax(input_,y_true_reshaped)
             e_l = np.zeros_like(output_)
             e_l[y_true_reshaped == 1] = 1
-            grads_wrt_preac = - (e_l - output_) / batch_size ## CHK ##
+            grads_wrt_preac = - (y_true_reshaped - output_) / batch_size ## CHK ##
 
-            print(grads_wrt_preac_1, "\n", grads_wrt_preac)
+            #print(grads_wrt_preac, "\n", grads_wrt_preac)
         elif output_activation_str == "sigmoid":
             grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
         elif output_activation_str == "tanh":
