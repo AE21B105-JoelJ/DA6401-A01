@@ -99,6 +99,7 @@ def softmax(input_, safe = True):
     """
     if safe: # reduces the overflow in exponential
         inputs_safe = input_ - np.max(input_, axis = 0,keepdims=True)
+        #inputs_safe = np.clip(inputs_safe,a_min=1e-10, a_max=None)
         output_ = np.exp(inputs_safe )/np.sum(np.exp(inputs_safe), axis = 0, keepdims=True)
     else:
         output_ = np.exp(input_)/np.sum(np.exp(input_), axis = 0, keepdims=True)
@@ -267,13 +268,14 @@ class Optimizer:
     Initialize the optimizer which performs both backpropagation by finding gradients and
     update with respect to the optimizer chosen
     """
-    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0, beta_rms = 0):
+    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0, beta_rms = 0, beta_1 = 0.9, beta_2 = 0.999):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
         assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"], "Optimizer is not valid"
         self.loss = loss
         self.optimizer = optimizer
         self.history = None
         self.learning_rate = learning_rate
+        self.epoch = 0
         # for momentum based tracking
         self.momentum = momentum
         self.update_mom_w = None
@@ -285,6 +287,13 @@ class Optimizer:
         self.beta_rms = beta_rms
         self.rms_v_w = None
         self.rms_v_b = None
+        # for adam
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
+        self.adam_m_w = None
+        self.adam_m_b = None
+        self.adam_v_w = None
+        self.adam_v_b = None
     
     def backprop_grads(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -480,6 +489,7 @@ class Optimizer:
         Weights : list of weight matrices list[<numpy.ndarray>]
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
+
         eps = 1e-6
         # Initialize the matrices (if not done already)
         if self.rms_v_w is None or self.rms_v_b is None :
@@ -501,7 +511,50 @@ class Optimizer:
 
         # returning the weights and biases
         return Weights, Biases
+    
+    def adam_step(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        """
+        Does one step gradient descent of weights with adam (does in place)
+        Input:
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        grads_wrt_weights : list of gradient weight matrices list[<numpy.ndarray>]
+        grads_wrt_biases : list of gradient bias matrices list[<numpy.ndarray>]
+        Output: 
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        """
 
+        eps = 1e-6
+        # Initialization of the matrix (if not done already)
+        if self.adam_v_w is None or self.adam_v_b is None or self.adam_m_w is None or self.adam_m_b is None:
+            self.adam_v_w, self.adam_v_b, self.adam_m_w, self.adam_m_b = [], [], [], []
+            for i in range(len(Weights)):
+                self.adam_v_w.append(np.zeros_like(Weights[i],dtype=np.longdouble))
+                self.adam_v_b.append(np.zeros_like(Biases[i],dtype=np.longdouble))
+                self.adam_m_w.append(np.zeros_like(Weights[i],dtype=np.longdouble))
+                self.adam_m_b.append(np.zeros_like(Biases[i],dtype=np.longdouble))
+
+        # Finding the gradients
+        grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+
+        # Update eqn and updating the weights and biases
+        for i in range(len(Weights)):
+            # m update eqn (with bias correction)
+            self.adam_m_w[i] = (self.beta_1*self.adam_m_w[i] + (1-self.beta_1)*grads_wrt_weights[i])/(1-self.beta_1**self.epoch)
+            self.adam_m_b[i] = (self.beta_1*self.adam_m_b[i] + (1-self.beta_1)*grads_wrt_biases[i])/(1-self.beta_1**self.epoch)
+            # v update eqn (with bias correction)
+            self.adam_v_w[i] = (self.beta_2*self.adam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2))/(1-self.beta_2**self.epoch)
+            self.adam_v_b[i] = (self.beta_2*self.adam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2))/(1-self.beta_2**self.epoch)
+            # weight and biases update
+            Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(self.adam_v_w[i] + eps)))*self.adam_m_w[i]
+            Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(self.adam_v_b[i] + eps)))*self.adam_m_b[i]
+            # if using L2 norm
+            #Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(np.linalg.norm(self.adam_v_w[i],ord=2) + eps)))*self.adam_m_w[i]
+            #Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(np.linalg.norm(self.adam_v_b[i],ord=2) + eps)))*self.adam_m_b[i]
+
+        # returning the weights and biases
+        return Weights, Biases
 
     def stepper(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -515,7 +568,9 @@ class Optimizer:
         Weights : list of weight matrices list[<numpy.ndarray>]
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
-        # Step accordin to the optimizer
+
+        self.epoch += 1
+        # Step according to the optimizer
         if self.optimizer == "sgd":
             Weights, Biases = self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         elif self.optimizer == "gd":
@@ -524,7 +579,8 @@ class Optimizer:
             Weights, Biases = self.nag_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         elif self.optimizer == "rmsprop":
             Weights, Biases = self.rmsprop_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
-        
+        elif self.optimizer == "adam":
+            Weights, Biases = self.adam_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         return Weights, Biases
         
 class FeedForwardNeuralNetwork:
@@ -532,7 +588,8 @@ class FeedForwardNeuralNetwork:
     Feed forward neural network class which is used to train the model and store the weights...
     in short (An Orchestrator of the modules)
     """
-    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,threshold = 0.5, beta_rms = 0.95):
+    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,threshold = 0.5, 
+                beta_rms = 0.95, beta_1 = 0.9, beta_2 = 0.999):
         self.arch = arch
         self.activation_seqence = activation_sequence
         self.optimizer = optimizer
@@ -542,8 +599,11 @@ class FeedForwardNeuralNetwork:
         self.initialization = initialization
         self.threshold = threshold
         self.beta_rms = beta_rms
+        self.beta_1 = beta_1
+        self.beta_2 = beta_2
 
-        self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,momentum=self.momentum,beta_rms=self.beta_rms)
+        self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,momentum=self.momentum,
+                                        beta_rms=self.beta_rms, beta_1 = self.beta_1, beta_2 = self.beta_2)
         # Some assertions to be made
         assert len(self.activation_seqence) == len(self.arch) - 1 , "Number of layers and activation do not match"
 
@@ -615,3 +675,4 @@ class FeedForwardNeuralNetwork:
 
 
 # SOFTMAX AND !(CROSS-ENTROPY) HAS TO BE DONE
+# ADAM HAS NUMERICAL ISSUES...
