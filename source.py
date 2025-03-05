@@ -278,6 +278,9 @@ class Optimizer:
         self.momentum = momentum
         self.update_mom_w = None
         self.update_mom_b = None
+        # for nag tracking
+        self.update_nag_w = None
+        self.update_nag_b = None
     
     def backprop_grads(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -421,6 +424,46 @@ class Optimizer:
         # returning the weights and biases
         return Weights, Biases
     
+    def nag_step(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        """
+        Does one step gradient descent of weights with nag (does in place)
+        Input:
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        grads_wrt_weights : list of gradient weight matrices list[<numpy.ndarray>]
+        grads_wrt_biases : list of gradient bias matrices list[<numpy.ndarray>]
+        Output: 
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        """
+
+        # Initialize the matrices (if not done already)
+        if self.update_nag_w is None or self.update_nag_b is None :
+            self.update_nag_b, self.update_nag_w = [], []
+            for i in range(len(Weights)):
+                self.update_nag_w.append(np.zeros_like(Weights[i],dtype=np.longdouble))
+                self.update_nag_b.append(np.zeros_like(Biases[i],dtype=np.longdouble))
+        
+        # calculating the lookahead Weights and Biases
+        Weights_lookahead, Biases_lookahead = [], []
+        for i in range(len(Weights)):
+            Weights_lookahead.append(Weights[i] - self.momentum*self.update_nag_w[i])
+            Biases_lookahead.append(Biases[i] - self.momentum*self.update_nag_b[i])
+        
+        # Calculating the gradients of the lookahead
+        grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights_lookahead, Biases_lookahead, pre_ac, post_ac, y_true, activation_sequence)
+
+        # calculating the update and updating the weights
+        for i in range(len(Weights)):
+            self.update_nag_w[i] = self.momentum*self.update_nag_w[i] + self.learning_rate*grads_wrt_weights[i]
+            self.update_nag_b[i] = self.momentum*self.update_nag_b[i] + self.learning_rate*grads_wrt_biases[i]
+            # update of the weights
+            Weights[i] = Weights[i] - self.update_nag_w[i]
+            Biases[i] = Biases[i] - self.update_nag_b[i]
+        
+        # returning the weights and biases
+        return Weights, Biases
+
     def stepper(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
         Does one step update of weights with the optimizer chosen (Helper function called from model)
@@ -436,10 +479,12 @@ class Optimizer:
         # Step accordin to the optimizer
         if self.optimizer == "sgd":
             Weights, Biases = self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
-            return Weights, Biases
         elif self.optimizer == "gd":
-            Weights, Biases=  self.gd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
-            return Weights, Biases
+            Weights, Biases =  self.gd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+        elif self.optimizer == "nag":
+            Weights, Biases = self.nag_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+        
+        return Weights, Biases
         
 class FeedForwardNeuralNetwork:
     """
@@ -525,3 +570,6 @@ class FeedForwardNeuralNetwork:
         Weights, Biases = self.Optimizer_class.stepper(self.weights, self.biases, preac, postac, y_train, self.activation_seqence)
         # Update the weights
         self.update_params(Weights, Biases)
+
+
+# SOFTMAX AND !(CROSS-ENTROPY) HAS TO BE DONE
