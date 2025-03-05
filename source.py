@@ -267,7 +267,7 @@ class Optimizer:
     Initialize the optimizer which performs both backpropagation by finding gradients and
     update with respect to the optimizer chosen
     """
-    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0):
+    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0, beta_rms = 0):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
         assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"], "Optimizer is not valid"
         self.loss = loss
@@ -281,6 +281,10 @@ class Optimizer:
         # for nag tracking
         self.update_nag_w = None
         self.update_nag_b = None
+        # for rmsprop
+        self.beta_rms = beta_rms
+        self.rms_v_w = None
+        self.rms_v_b = None
     
     def backprop_grads(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -463,6 +467,41 @@ class Optimizer:
         
         # returning the weights and biases
         return Weights, Biases
+    
+    def rmsprop_step(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        """
+        Does one step gradient descent of weights with rmsprop (does in place)
+        Input:
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        grads_wrt_weights : list of gradient weight matrices list[<numpy.ndarray>]
+        grads_wrt_biases : list of gradient bias matrices list[<numpy.ndarray>]
+        Output: 
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        """
+        eps = 1e-6
+        # Initialize the matrices (if not done already)
+        if self.rms_v_w is None or self.rms_v_b is None :
+            self.rms_v_w, self.rms_v_b = [], []
+            for i in range(len(Weights)):
+                self.rms_v_w.append(np.zeros_like(Weights[i],dtype=np.longdouble))
+                self.rms_v_b.append(np.zeros_like(Biases[i],dtype=np.longdouble))
+
+        # Finding the gradients
+        grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+
+        # Update equation anfd updating the weights
+        for i in range(len(Weights)):
+            self.rms_v_w[i] = self.beta_rms*self.rms_v_w[i] + (1-self.beta_rms)*(grads_wrt_weights[i]**2)
+            self.rms_v_b[i] = self.beta_rms*self.rms_v_b[i] + (1-self.beta_rms)*(grads_wrt_biases[i]**2)
+            # Update eqn
+            Weights[i] = Weights[i] - (self.learning_rate/np.sqrt(self.rms_v_w[i] + eps))*grads_wrt_weights[i]
+            Biases[i] = Biases[i] - (self.learning_rate/np.sqrt(self.rms_v_b[i] + eps))*grads_wrt_biases[i]
+
+        # returning the weights and biases
+        return Weights, Biases
+
 
     def stepper(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -483,6 +522,8 @@ class Optimizer:
             Weights, Biases =  self.gd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         elif self.optimizer == "nag":
             Weights, Biases = self.nag_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+        elif self.optimizer == "rmsprop":
+            Weights, Biases = self.rmsprop_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         
         return Weights, Biases
         
@@ -491,7 +532,7 @@ class FeedForwardNeuralNetwork:
     Feed forward neural network class which is used to train the model and store the weights...
     in short (An Orchestrator of the modules)
     """
-    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,threshold = 0.5):
+    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,threshold = 0.5, beta_rms = 0.95):
         self.arch = arch
         self.activation_seqence = activation_sequence
         self.optimizer = optimizer
@@ -500,8 +541,9 @@ class FeedForwardNeuralNetwork:
         self.momentum = momentum
         self.initialization = initialization
         self.threshold = threshold
+        self.beta_rms = beta_rms
 
-        self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,momentum=self.momentum)
+        self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,momentum=self.momentum,beta_rms=self.beta_rms)
         # Some assertions to be made
         assert len(self.activation_seqence) == len(self.arch) - 1 , "Number of layers and activation do not match"
 
