@@ -97,7 +97,7 @@ def softmax(input_, safe = True):
     Returns :
     output : numpy.ndarray with softmax actiavtion
     """
-    if safe:
+    if safe: # reduces the overflow in exponential
         inputs_safe = input_ - np.max(input_, axis = 0,keepdims=True)
         output_ = np.exp(inputs_safe )/np.sum(np.exp(inputs_safe), axis = 0, keepdims=True)
     else:
@@ -223,7 +223,7 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
     # return output, preactivations and post activations
     return output, fp_pre_ac, fp_post_ac
 
-def batchloader(X_data, y_data, batch_size = 32, shuffle = True):
+class Batchloader:
     """
     Input:
     X_data : Feature data <numpy.ndarray>
@@ -233,28 +233,6 @@ def batchloader(X_data, y_data, batch_size = 32, shuffle = True):
     Output:
     batches : zip(X_batch,y_batch) zip dataloader.
     """
-
-    batches_x = []
-    batches_y = []
-    length_ = len(X_data)
-    # Creating the indexed for batching
-    if shuffle:
-        ind = np.random.permutation(length_)
-    else:
-        ind = np.arange(length_)
-    # num of batches 
-    num_batches = (length_ // batch_size) + 1 if length_%batch_size !=0 else length_//batch_size
-    for i in range(num_batches):
-        if i == num_batches - 1:
-            batches_x.append(X_data[i*batch_size:])
-            batches_y.append(y_data[i*batch_size:])
-            break
-        batches_x.append(X_data[i*batch_size:(i+1)*batch_size])
-        batches_y.append(y_data[i*batch_size:(i+1)*batch_size])
-    # returning a zip of the batch
-    return (batches_x, batches_y)
-
-class Batchloader:
     def __init__(self, X, y, batch_size = 32, shuffle = False):
         self.X = X
         self.y = y
@@ -278,12 +256,17 @@ class Batchloader:
             self.initialize()
             raise StopIteration # to stop the batchloader
         
+        # return the batches of x and y
         tail = self.head + self.batch_size
         X_batch, y_batch = self.X[self.ind[self.head:tail]], self.y[self.ind[self.head:tail]]
         self.head = tail
         return X_batch, y_batch
         
 class Optimizer:
+    """
+    Initialize the optimizer which performs both backpropagation by finding gradients and
+    update with respect to the optimizer chosen
+    """
     def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
         assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"], "Optimizer is not valid"
@@ -336,11 +319,11 @@ class Optimizer:
         ## Output layer preactivation
         if output_activation_str == "linear":
             grads_wrt_preac = grads_wrt_postact*diff_linear(input_)
-        elif output_activation_str == "softmax": ## SOFTMAX NOT FIXED YET ##
+        elif output_activation_str == "softmax": 
             grads_wrt_preac_1 = grads_wrt_postact*diff_softmax(input_,y_true_reshaped)
             e_l = np.zeros_like(output_)
             e_l[y_true_reshaped == 1] = 1
-            grads_wrt_preac = - (y_true_reshaped - output_) / batch_size ## CHK ##
+            grads_wrt_preac = - (y_true_reshaped - output_) / batch_size 
 
             #print(grads_wrt_preac, "\n", grads_wrt_preac)
         elif output_activation_str == "sigmoid":
@@ -429,8 +412,8 @@ class Optimizer:
         # update with momentum
         for i in range(len(Weights)):
             # update eqn
-            self.update_mom_w[i] = self.momentum*self.update_mom_w + self.learning_rate*grads_wrt_weights[i]
-            self.update_mom_b[i] = self.momentum*self.update_mom_b + self.learning_rate*grads_wrt_biases[i]
+            self.update_mom_w[i] = self.momentum*self.update_mom_w[i] + self.learning_rate*grads_wrt_weights[i]
+            self.update_mom_b[i] = self.momentum*self.update_mom_b[i] + self.learning_rate*grads_wrt_biases[i]
             # step eqn
             Weights[i] = Weights[i] - self.update_mom_w[i]
             Biases[i] = Biases[i] - self.update_mom_b[i]
@@ -439,6 +422,17 @@ class Optimizer:
         return Weights, Biases
     
     def stepper(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        """
+        Does one step update of weights with the optimizer chosen (Helper function called from model)
+        Input:
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        grads_wrt_weights : list of gradient weight matrices list[<numpy.ndarray>]
+        grads_wrt_biases : list of gradient bias matrices list[<numpy.ndarray>]
+        Output: 
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        """
         # Step accordin to the optimizer
         if self.optimizer == "sgd":
             Weights, Biases = self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
@@ -448,7 +442,11 @@ class Optimizer:
             return Weights, Biases
         
 class FeedForwardNeuralNetwork:
-    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,):
+    """
+    Feed forward neural network class which is used to train the model and store the weights...
+    in short (An Orchestrator of the modules)
+    """
+    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,threshold = 0.5):
         self.arch = arch
         self.activation_seqence = activation_sequence
         self.optimizer = optimizer
@@ -456,6 +454,7 @@ class FeedForwardNeuralNetwork:
         self.loss = loss
         self.momentum = momentum
         self.initialization = initialization
+        self.threshold = threshold
 
         self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,momentum=self.momentum)
         # Some assertions to be made
@@ -465,46 +464,64 @@ class FeedForwardNeuralNetwork:
         self.weights, self.biases = init_mat(Info=self.arch, init_scheme= self.initialization)
 
     def forward_call(self, inputs_, is_batch_alone = False, is_batch_both = False, with_logits = False, threshold = False):
+        """
+        Forward call with the inputs
+        inputs_ : <numpy.ndarra> or batchloader 
+        is_batch_alone : boolean whether the input is a batch of X alone
+        is_batch_both : boolean whether the input is a batch of both X,Y
+        with_logits : boolean whether not to apply the output activation
+        threshold: boolean whether the threshold has to be applied
+        Output
+        output_final : <numpy.ndarray> Output from the model
+        """
         activation_copy = self.activation_seqence.copy()
         if with_logits:
             activation_copy[-1] = "linear"
-        outputs_list = []
+        outputs_ = None
         if is_batch_alone:
             for X in inputs_:
                 out_batch, _, _ = forward_propagation(X, self.weights, self.biases, activation_sequence=activation_copy)
-                outputs_list.append(out_batch)
-            outputs_ = outputs_list[0]
-            for i in range(1,len(outputs_list)):
-                outputs_ = np.append(outputs_, outputs_list[i], axis = 0)
+                if outputs_ is None:
+                    outputs_ = out_batch.copy()
+                else:
+                    outputs_ = np.append(outputs_, out_batch, axis=0)
 
         elif is_batch_both:
             for X, _ in inputs_:
                 out_batch, _, _ = forward_propagation(X, self.weights, self.biases, activation_sequence=activation_copy)
-                outputs_list.append(out_batch)
-            outputs_ = outputs_list[0]
-            for i in range(1,len(outputs_list)):
-                outputs_ = np.append(outputs_, outputs_list[i], axis = 0)
+                if outputs_ is None:
+                    outputs_ = out_batch.copy()
+                else:
+                    outputs_ = np.append(outputs_, out_batch, axis=0)
         else:
             outputs_, _, _ = forward_propagation(inputs_, self.weights, self.biases, activation_sequence=activation_copy)
 
         # threshold the outputs
         out_final = outputs_.copy()
-        if threshold:
+        if threshold and self.activation_seqence[-1] == "softmax":
             out_final = np.zeros_like(outputs_, dtype= np.int64)
             out_final[np.arange(len(outputs_)),np.argmax(outputs_,axis=1)] = 1
+        elif threshold and self.activation_seqence[-1] == "sigmoid":
+            out_final = np.zeros_like(outputs_, dtype= np.int64)
+            out_final[outputs_ >= self.threshold] = 1
+            out_final[outputs_ < self.threshold] = 0
         return out_final
     
     def update_params(self, Weights, Biases):
+        """
+        Update the weights and biases of the model
+        """
         self.weights = Weights.copy()
         self.biases = Biases.copy()
         return self
 
     def train_step(self, X_train, y_train):
+        """
+        Does one step of training of the model
+        """
         # Forward propagation
         _, preac, postac = forward_propagation(X_train, self.weights, self.biases, activation_sequence = self.activation_seqence)
         # Do one optimizer step
         Weights, Biases = self.Optimizer_class.stepper(self.weights, self.biases, preac, postac, y_train, self.activation_seqence)
         # Update the weights
         self.update_params(Weights, Biases)
-
-# STILL A NUMERICAL OVERFLOW IN SOFTMAX PERSISTS...
