@@ -272,7 +272,7 @@ class Optimizer:
     """
     def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0, beta_rms = 0, beta_1 = 0.9, beta_2 = 0.999):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
-        assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam"], "Optimizer is not valid"
+        assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam","nadam"], "Optimizer is not valid"
         self.loss = loss
         self.optimizer = optimizer
         self.history = None
@@ -296,6 +296,11 @@ class Optimizer:
         self.adam_m_b = None
         self.adam_v_w = None
         self.adam_v_b = None
+        # for Nadam
+        self.nadam_m_w = None
+        self.nadam_m_b = None
+        self.nadam_v_w = None
+        self.nadam_v_b = None
     
     def backprop_grads(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
         """
@@ -543,14 +548,64 @@ class Optimizer:
         # Update eqn and updating the weights
         for i in range(len(Weights)):
             # momentum update (with bias correction)
-            self.adam_m_w[i] = (self.beta_1*self.adam_m_w[i] + (1-self.beta_1)*(grads_wrt_weights[i]))/(1 - self.beta_1**self.epoch)
-            self.adam_m_b[i] = (self.beta_1*self.adam_m_b[i] + (1-self.beta_1)*(grads_wrt_biases[i]))/(1 - self.beta_1**self.epoch)
+            self.adam_m_w[i] = self.beta_1*self.adam_m_w[i] + (1-self.beta_1)*(grads_wrt_weights[i])
+            self.adam_m_b[i] = self.beta_1*self.adam_m_b[i] + (1-self.beta_1)*(grads_wrt_biases[i])
             # adaptive gradient collector update (with bias correction)
-            self.adam_v_w[i] = (self.beta_2*self.adam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2))/(1 - self.beta_2**self.epoch)
-            self.adam_v_b[i] = (self.beta_2*self.adam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2))/(1 - self.beta_2**self.epoch)
+            self.adam_v_w[i] = self.beta_2*self.adam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2)
+            self.adam_v_b[i] = self.beta_2*self.adam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2)
+            # Bias correction
+            self.adam_m_w_hat = self.adam_m_w[i]/(1 - self.beta_1**self.epoch)
+            self.adam_m_b_hat = self.adam_m_b[i]/(1 - self.beta_1**self.epoch)
+            self.adam_v_w_hat = self.adam_v_w[i]/(1 - self.beta_2**self.epoch)
+            self.adam_v_b_hat = self.adam_v_b[i]/(1 - self.beta_2**self.epoch)
             # Update eqn
-            Weights[i] = Weights[i] - (self.learning_rate*self.adam_m_w[i])/(np.sqrt(self.adam_v_w[i]) + eps)
-            Biases[i] = Biases[i] - (self.learning_rate*self.adam_m_b[i])/(np.sqrt(self.adam_v_b[i]) + eps)
+            Weights[i] = Weights[i] - (self.learning_rate*self.adam_m_w_hat)/(np.sqrt(self.adam_v_w_hat) + eps)
+            Biases[i] = Biases[i] - (self.learning_rate*self.adam_m_b_hat)/(np.sqrt(self.adam_v_b_hat) + eps)
+
+        return Weights, Biases
+    
+    def nadam_step(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+        """
+        Does one step gradient descent of weights with Nadam (does in place)
+        Input:
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        grads_wrt_weights : list of gradient weight matrices list[<numpy.ndarray>]
+        grads_wrt_biases : list of gradient bias matrices list[<numpy.ndarray>]
+        Output: 
+        Weights : list of weight matrices list[<numpy.ndarray>]
+        Biases : list of bias matrices list[<numpy.ndarray>]
+        """
+
+        eps = 1e-8
+        # Initialization of the matrix (if not done already)
+        if self.nadam_v_w is None or self.nadam_v_b is None or self.nadam_m_w is None or self.nadam_m_b is None:
+            self.nadam_v_w, self.nadam_v_b, self.nadam_m_w, self.nadam_m_b = [], [], [], []
+            for i in range(len(Weights)):
+                self.nadam_v_w.append(np.zeros_like(Weights[i],dtype=np.longdouble))
+                self.nadam_v_b.append(np.zeros_like(Biases[i],dtype=np.longdouble))
+                self.nadam_m_w.append(np.zeros_like(Weights[i],dtype=np.longdouble))
+                self.nadam_m_b.append(np.zeros_like(Biases[i],dtype=np.longdouble))
+
+        # Finding the gradients
+        grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+
+        # Updatind equations
+        for i in range(len(Weights)):
+             # momentum update (with bias correction)
+            self.nadam_m_w[i] = self.beta_1*self.nadam_m_w[i] + (1-self.beta_1)*(grads_wrt_weights[i])
+            self.nadam_m_b[i] = self.beta_1*self.nadam_m_b[i] + (1-self.beta_1)*(grads_wrt_biases[i])
+            # adaptive gradient collector update (with bias correction)
+            self.nadam_v_w[i] = self.beta_2*self.nadam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2)
+            self.nadam_v_b[i] = self.beta_2*self.nadam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2)
+            # Bias correction
+            self.nadam_m_w_hat = self.nadam_m_w[i]/(1 - self.beta_1**self.epoch)
+            self.nadam_m_b_hat = self.nadam_m_b[i]/(1 - self.beta_1**self.epoch)
+            self.nadam_v_w_hat = self.nadam_v_w[i]/(1 - self.beta_2**self.epoch)
+            self.nadam_v_b_hat = self.nadam_v_b[i]/(1 - self.beta_2**self.epoch)
+            # Update eqn
+            Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(self.nadam_v_w_hat) + eps))*(self.beta_1*self.nadam_m_w_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_weights[i])
+            Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(self.nadam_v_b_hat) + eps))*(self.beta_1*self.nadam_m_b_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_biases[i])
 
         return Weights, Biases
 
@@ -579,7 +634,10 @@ class Optimizer:
             Weights, Biases = self.rmsprop_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         elif self.optimizer == "adam":
             Weights, Biases = self.adam_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+        elif self.optimizer == "nadam":
+            Weights, Biases = self.nadam_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         return Weights, Biases
+
         
 class FeedForwardNeuralNetwork:
     """
