@@ -166,8 +166,10 @@ def find_loss(y_pred, y_true, loss = "mean_squared_error"):
     elif loss == "binary_cross_entropy":
         output_ = (-1/len(y_true))*np.sum(y_true*np.log(y_pred) + (1-y_true)*np.log(1-y_pred))
     elif loss == "cross_entropy":
+        eps = 1e-8
+        #y_pred = np.clip(y_pred, a_min=1e-10, a_max=None) # to avoid division by zero
         #output_ = (-1/len(y_true))*np.sum(np.log(y_pred[y_true == 1]))
-        output_ = (-1/len(y_true))*np.sum(np.log(y_pred)*y_true)
+        output_ = (-1/len(y_true))*np.sum(np.log(y_pred + eps)*y_true)
     return np.squeeze(output_)
 
 # Forward propagation #
@@ -525,7 +527,7 @@ class Optimizer:
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
 
-        eps = 1e-6
+        eps = 1e-8
         # Initialization of the matrix (if not done already)
         if self.adam_v_w is None or self.adam_v_b is None or self.adam_m_w is None or self.adam_m_b is None:
             self.adam_v_w, self.adam_v_b, self.adam_m_w, self.adam_m_b = [], [], [], []
@@ -538,25 +540,21 @@ class Optimizer:
         # Finding the gradients
         grads_wrt_weights, grads_wrt_biases = self.backprop_grads(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
 
-        # Update eqn and updating the weights and biases
+        # Update eqn and updating the weights
         for i in range(len(Weights)):
-            # m update eqn (with bias correction)
-            self.adam_m_w[i] = (self.beta_1*self.adam_m_w[i] + (1-self.beta_1)*grads_wrt_weights[i])/(1-self.beta_1**self.epoch)
-            self.adam_m_b[i] = (self.beta_1*self.adam_m_b[i] + (1-self.beta_1)*grads_wrt_biases[i])/(1-self.beta_1**self.epoch)
-            # v update eqn (with bias correction)
-            self.adam_v_w[i] = (self.beta_2*self.adam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2))/(1-self.beta_2**self.epoch)
-            self.adam_v_b[i] = (self.beta_2*self.adam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2))/(1-self.beta_2**self.epoch)
-            # weight and biases update
-            Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(self.adam_v_w[i] + eps)))*self.adam_m_w[i]
-            Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(self.adam_v_b[i] + eps)))*self.adam_m_b[i]
-            # if using L2 norm
-            #Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(np.linalg.norm(self.adam_v_w[i],ord=2) + eps)))*self.adam_m_w[i]
-            #Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(np.linalg.norm(self.adam_v_b[i],ord=2) + eps)))*self.adam_m_b[i]
+            # momentum update (with bias correction)
+            self.adam_m_w[i] = (self.beta_1*self.adam_m_w[i] + (1-self.beta_1)*(grads_wrt_weights[i]))/(1 - self.beta_1**self.epoch)
+            self.adam_m_b[i] = (self.beta_1*self.adam_m_b[i] + (1-self.beta_1)*(grads_wrt_biases[i]))/(1 - self.beta_1**self.epoch)
+            # adaptive gradient collector update (with bias correction)
+            self.adam_v_w[i] = (self.beta_2*self.adam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2))/(1 - self.beta_2**self.epoch)
+            self.adam_v_b[i] = (self.beta_2*self.adam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2))/(1 - self.beta_2**self.epoch)
+            # Update eqn
+            Weights[i] = Weights[i] - (self.learning_rate*self.adam_m_w[i])/(np.sqrt(self.adam_v_w[i]) + eps)
+            Biases[i] = Biases[i] - (self.learning_rate*self.adam_m_b[i])/(np.sqrt(self.adam_v_b[i]) + eps)
 
-        # returning the weights and biases
         return Weights, Biases
 
-    def stepper(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence):
+    def stepper(self, Weights, Biases, pre_ac, post_ac, y_true, activation_sequence, epoch):
         """
         Does one step update of weights with the optimizer chosen (Helper function called from model)
         Input:
@@ -662,17 +660,16 @@ class FeedForwardNeuralNetwork:
         self.biases = Biases.copy()
         return self
 
-    def train_step(self, X_train, y_train):
+    def train_step(self, X_train, y_train, epoch):
         """
         Does one step of training of the model
         """
         # Forward propagation
         _, preac, postac = forward_propagation(X_train, self.weights, self.biases, activation_sequence = self.activation_seqence)
         # Do one optimizer step
-        Weights, Biases = self.Optimizer_class.stepper(self.weights, self.biases, preac, postac, y_train, self.activation_seqence)
+        Weights, Biases = self.Optimizer_class.stepper(self.weights, self.biases, preac, postac, y_train, self.activation_seqence, epoch=epoch)
         # Update the weights
         self.update_params(Weights, Biases)
 
 
 # SOFTMAX AND !(CROSS-ENTROPY) HAS TO BE DONE
-# ADAM HAS NUMERICAL ISSUES...
