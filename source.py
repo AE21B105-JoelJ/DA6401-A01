@@ -270,7 +270,7 @@ class Optimizer:
     Initialize the optimizer which performs both backpropagation by finding gradients and
     update with respect to the optimizer chosen
     """
-    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, momentum = 0, beta_rms = 0, beta_1 = 0.9, beta_2 = 0.999):
+    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, weight_decay = 0, momentum = 0, beta_rms = 0, beta_1 = 0.9, beta_2 = 0.999):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
         assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam","nadam"], "Optimizer is not valid"
         self.loss = loss
@@ -278,6 +278,7 @@ class Optimizer:
         self.history = None
         self.learning_rate = learning_rate
         self.epoch = 0
+        self.weight_decay = weight_decay
         # for momentum based tracking
         self.momentum = momentum
         self.update_mom_w = None
@@ -365,6 +366,9 @@ class Optimizer:
             # (- checker ) print(f" Layer : {-layer}  \n W : {W.shape} \n B : {b.shape} \n preac : {grads_wrt_preac.shape}")
             grads_W = (1/batch_size)*np.sum(np.einsum("ij,kj->ikj",grads_wrt_preac,output_),axis=2) #changed mean
             grads_b = (1/batch_size)*np.sum(grads_wrt_preac, axis = 1,keepdims=True)
+            # Adding the gradients due to weight decay
+            grads_W = grads_W + 2*self.weight_decay*W
+            grads_b = grads_b + 2*self.learning_rate*b
             # check the shapes of the gradient matches with the matrix size
             assert grads_W.shape == Weights[-layer].shape, f"Shape of grad_W and W at layer : {-layer} does not match"
             assert grads_b.shape == Biases[-layer].shape, f"Shape of grad_b and B at layer : {-layer} does not match"
@@ -644,11 +648,12 @@ class FeedForwardNeuralNetwork:
     Feed forward neural network class which is used to train the model and store the weights...
     in short (An Orchestrator of the modules)
     """
-    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, loss, initialization, momentum = 0,threshold = 0.5, 
+    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, weight_decay, loss, initialization, momentum = 0,threshold = 0.5, 
                 beta_rms = 0.95, beta_1 = 0.9, beta_2 = 0.999):
         self.arch = arch
         self.activation_seqence = activation_sequence
         self.optimizer = optimizer
+        self.weight_decay = weight_decay
         self.learning_rate  = learning_rate
         self.loss = loss
         self.momentum = momentum
@@ -658,7 +663,7 @@ class FeedForwardNeuralNetwork:
         self.beta_1 = beta_1
         self.beta_2 = beta_2
 
-        self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,momentum=self.momentum,
+        self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,weight_decay=self.weight_decay,momentum=self.momentum,
                                         beta_rms=self.beta_rms, beta_1 = self.beta_1, beta_2 = self.beta_2)
         # Some assertions to be made
         assert len(self.activation_seqence) == len(self.arch) - 1 , "Number of layers and activation do not match"
