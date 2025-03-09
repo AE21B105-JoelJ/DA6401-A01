@@ -44,4 +44,5 @@ Build of the neural network
    3) Then update the parameters of the model with "update_params()" method.
   
 
-
+## Model Training
+## Model Validating
