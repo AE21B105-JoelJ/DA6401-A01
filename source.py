@@ -20,8 +20,8 @@ def init_mat(Info : List[int], init_scheme = "random"):
     for i in range(1,len(Info)):
         if init_scheme == "random":
             # Here we consider uniformly random from [-1,1]
-            weight_matrix = np.random.randn(Info[i],Info[i-1])*0.01 # Creating weight matrix for each layer
-            bias_matrix = np.random.randn(Info[i],1)*0.01 # Creating bias matrix for each layer
+            weight_matrix = np.random.randn(Info[i],Info[i-1])*0.1 # Creating weight matrix for each layer
+            bias_matrix = np.random.randn(Info[i],1)*0.1 # Creating bias matrix for each layer
 
         elif init_scheme == "Xavier":
             input_output = Info[i-1] + Info[i]
@@ -48,6 +48,18 @@ def one_hot_numpy(input_):
     one_hot_enc = np.zeros(shape = (len(input_), num_classes), dtype= np.int64)
     one_hot_enc[np.arange(len(input_)) , input_] = 1.0
     return one_hot_enc
+
+def accuracy(y_hot_pred, y_hot_true):
+    """
+    input : One hot Y_true, Y_pred
+    ouput : accuracy
+    """
+
+    total = len(y_hot_true)
+    y_pred = np.argmax(y_hot_pred, axis=1)
+    y_true = np.argmax(y_hot_true, axis = 1)
+    accuracy = np.sum(y_pred == y_true)/total
+    return accuracy
 
 # Activation functions #
 def relu(input_):
@@ -77,7 +89,7 @@ def tanh(input_):
     Returns :
     output : numpy.ndarray with tanh applied
     """
-
+    
     output_ = (2 / (1 + np.exp(-2*input_))) - 1
     return output_
 
@@ -147,18 +159,15 @@ def diff_linear(input_):
     output_ = np.ones_like(input_)
     return output_
 
-def diff_softmax(input_, y_reshaped): # Not completed yet...
+def diff_softmax_idea(input_, y_true_reshaped): 
     """
     input : numpy.ndarray 
     Returns :
     output : numpy.ndarray with softmax differentiation actiavtion
     """
-
-    softmax_output = softmax(input_)
-    output_ = np.zeros_like(input_)
-    output_[y_reshaped == 1] = softmax_output[y_reshaped == 1]
-    output_ = output_ - softmax_output*(softmax_output[y_reshaped == 1])
-    return output_
+    y_true_logits = y_true_reshaped*10000.0
+    grads_wrt_preac = -2*(y_true_logits - input_)
+    return grads_wrt_preac
 
 def find_loss(y_pred, y_true, loss = "mean_squared_error"):
     if loss == "mean_squared_error":
@@ -167,7 +176,6 @@ def find_loss(y_pred, y_true, loss = "mean_squared_error"):
         output_ = (-1/len(y_true))*np.sum(y_true*np.log(y_pred) + (1-y_true)*np.log(1-y_pred))
     elif loss == "cross_entropy":
         eps = 1e-8
-        #y_pred = np.clip(y_pred, a_min=1e-10, a_max=None) # to avoid division by zero
         #output_ = (-1/len(y_true))*np.sum(np.log(y_pred[y_true == 1]))
         output_ = (-1/len(y_true))*np.sum(np.log(y_pred + eps)*y_true)
     return np.squeeze(output_)
@@ -331,25 +339,22 @@ class Optimizer:
         output_ = post_ac[-1]
         input_ = pre_ac[-1]
         if self.loss == "cross_entropy":
-            if output_activation_str == "softmax":
-                pass
-            #grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1]
-            #grads_wrt_postact = -1*np.ones_like(grads_wrt_postact)/(output_[y_true_reshaped == 1])
+            pass # because direct computation of grads_wrt_preac is numerically efficient...
         elif self.loss == "binary_cross_entropy":
             grads_wrt_postact[y_true_reshaped == 1] = - 1/output_[y_true_reshaped == 1] / dim
             grads_wrt_postact[y_true_reshaped == 0] =  1/(1 - output_[y_true_reshaped == 0]) / dim
         elif self.loss == "mean_squared_error":
-            grads_wrt_postact = -2*(y_true_reshaped - output_) # changed to correct one...
+            grads_wrt_postact = -2*(y_true_reshaped - output_) 
         ## Output layer preactivation
         if output_activation_str == "linear":
             grads_wrt_preac = grads_wrt_postact*diff_linear(input_)
-        elif output_activation_str == "softmax": 
-            grads_wrt_preac_1 = grads_wrt_postact*diff_softmax(input_,y_true_reshaped)
-            e_l = np.zeros_like(output_)
-            e_l[y_true_reshaped == 1] = 1
-            grads_wrt_preac = - (y_true_reshaped - output_) / batch_size 
-
-            #print(grads_wrt_preac, "\n", grads_wrt_preac)
+        elif output_activation_str == "softmax":
+            if self.loss == "cross_entropy":
+                e_l = np.zeros_like(output_)
+                e_l[y_true_reshaped == 1] = 1
+                grads_wrt_preac = - (y_true_reshaped - output_) / batch_size 
+            elif self.loss == "mean_squared_error":
+                grads_wrt_preac = diff_softmax_idea(input_, y_true_reshaped)
         elif output_activation_str == "sigmoid":
             grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
         elif output_activation_str == "tanh":
@@ -363,7 +368,6 @@ class Optimizer:
             W = Weights[-layer]
             b = Biases[-layer]
             # Finding gradients with respect to weights and biases (average along batch size)
-            # (- checker ) print(f" Layer : {-layer}  \n W : {W.shape} \n B : {b.shape} \n preac : {grads_wrt_preac.shape}")
             grads_W = (1/batch_size)*np.sum(np.einsum("ij,kj->ikj",grads_wrt_preac,output_),axis=2) #changed mean
             grads_b = (1/batch_size)*np.sum(grads_wrt_preac, axis = 1,keepdims=True)
             # Adding the gradients due to weight decay
@@ -629,6 +633,9 @@ class Optimizer:
         self.epoch += 1
         # Step according to the optimizer
         if self.optimizer == "sgd":
+            self.momentum = 0
+            Weights, Biases = self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
+        elif self.optimizer == "mom":
             Weights, Biases = self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         elif self.optimizer == "gd":
             Weights, Biases =  self.gd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
@@ -648,7 +655,7 @@ class FeedForwardNeuralNetwork:
     Feed forward neural network class which is used to train the model and store the weights...
     in short (An Orchestrator of the modules)
     """
-    def __init__(self, arch : List , activation_sequence : List, optimizer, learning_rate, weight_decay, loss, initialization, momentum = 0,threshold = 0.5, 
+    def __init__(self, arch : List , activation_sequence : List, optimizer = "adam", learning_rate = 1e-3, weight_decay = 0, loss = "cross_entropy", initialization = "Xavier", momentum = 0,threshold = 0.5, 
                 beta_rms = 0.95, beta_1 = 0.9, beta_2 = 0.999):
         self.arch = arch
         self.activation_seqence = activation_sequence
@@ -733,6 +740,3 @@ class FeedForwardNeuralNetwork:
         Weights, Biases = self.Optimizer_class.stepper(self.weights, self.biases, preac, postac, y_train, self.activation_seqence, epoch=epoch)
         # Update the weights
         self.update_params(Weights, Biases)
-
-
-# SOFTMAX AND !(CROSS-ENTROPY) HAS TO BE DONE
