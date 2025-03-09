@@ -29,3 +29,19 @@ Build of the neural network
  - "gd_step()", "sgd_step()", "nag_step()", "rmsprop_step", "adam_step()", "nadam_step()" are the set of functions that has all the inputs necessary to call the "backprop_grads()" function, finds the gradient and makes an update to the existing parameters and retuns the updated Weights and Biases.
  - "stepper()" function is called from the model while training is used to call one of the above optimizer methods to do a one step gradient update and also keeps track of the number of updates done (used for adaptive models).
 
+### Model (FeedForwardNeuralNetwork) class
+  The model class is the class that keeps track of the Weights and biases and does call the optimizer class and routines for weight updates for training and does a forward call when inputs_ are given and also has options to threshold the outputs.
+
+ - "__init__" is used to intiate the variables that are crucial to the model such as architecture, activation_sequence, loss, Weights and Biases, optimizer variables, and intiation scheme etc. Note that the weights and biases are initiated using the "init_mat()" function defined in the first section of the readme file.
+
+ - "forward_call()" method is calling the "forward_propagation()" method implicitly to find the output of forward propagation through the network and get the outputs and perform centain additional computations such as thresholding or finding the logits etc.
+
+ - "update_params()" this method is called when we have to update the Weights and Biases stores in the model class as a self variable.
+
+ - "train_step()" method is called when we have to perform one step of training. It gets input of the X_batch, y_batch, epoch and does the following
+   1) finds the pre-activations and post-activations by calling the "forward_propagation()" method.
+   2) passes this to the optimizer.stepper() function which does one step of gradient descent mentioned and returns the weights and biases.
+   3) Then update the parameters of the model with "update_params()" method.
+  
+
+
