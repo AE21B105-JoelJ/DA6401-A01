@@ -45,4 +45,6 @@ Build of the neural network
   
 
 ## Model Training
+![DL drawio](https://github.com/user-attachments/assets/04209272-1bd1-4199-8001-b8ecee5a9933)
+
 ## Model Validating
