@@ -1,6 +1,31 @@
 # DA6401 - Deep Learning Assignment 01 - (AE21B105)
 This README file gives the information about the code and how the function space is defined and used. This is a assignment on the programming and testing of the back-propagation framework and different optimization algorithms. Now all beign said lets get into the gory details of the assignment (code).
 
+## Usage of the script
+To run the code use the following code (The external parameters are defaulted to best accuracy got!!!), all the modules and classes are present in source.py file. The single training can be done with the train.py file.
+
+```
+python train.py --wandb_project project_name --wandb_entity entity_name
+```
+
+the additional supported arguents are as follows
+- "--dataset" tells dataset on which the model will be trained
+- "--epochs" tells Number of epochs to train the model
+- "--batch_size" tells batch size used to train the network
+- "--loss" tells the loss function to use
+- "--optimizer" tells optimizer to be used in training
+- "--learning_rate" tells learning rate used in the gradient update
+- "--momentum" tells momentum used in momentum-GD and NAG
+- "--beta" tells Beta used by RMSprop
+- "--beta1" tells Beta_1 used by Adam and NAdam
+- "--beta2" tells Beta_2 used by Adan and NAdam
+- "--epsilon" tells epsilon used by the optimizers
+- "--weight_decay" tells Weight decay used in training (L2)
+- "--weight_init" tells Weight initialization for the params
+- "--num_layers" tells number of hidden layers
+- "--hidden_size" tells number of neurons per hidden layer
+- "--activation" tells activation to be used for the hidden layers
+
 ## Definition of the functions
  - The first function "init_mat()" is used to initiate the weights and biases of a neural network given the architecture and the intitialization scheme which is either random or Xavier. For both case the random number generator used is gaussian distribution for random I have used a standard deviation of 0.1 and for Xavier its as per the definition of it. Note here Weights and Biases are list of <numpy.ndarray> which are squentially used for forward propagation.
 
@@ -45,6 +70,12 @@ Build of the neural network
   
 
 ## Model Training
+ The flow of the training of the feed forward neural network is shown below in the given diagram. The train loop is in the bottom-right which call the the methods and classes in the training module.
+ 
 ![DL drawio](https://github.com/user-attachments/assets/04209272-1bd1-4199-8001-b8ecee5a9933)
 
 ## Model Validating
+ The validation of the model can be added in the train.py if required. By default the confusion matrix for the test data, the train and validation data accuracy is logged at every training epoch. Final test accuracy is also logged at wandb. Do feel free to add and log any other metric.
+
+## Add a new optimizer
+ Lets say we are to add new optimizer named EVE !!! Now the steps to follow are these, add a function under optimizer named "eve_step()" which when given the gradients does one step of gradient descent. Now we will have to add the parameters and some additional matrices for this add those in the __init__() function in the optimizer class. Also I have an assert in the optimizers do take care to add the new optimizer name in that. Then in the "stepper()" function in the optimizer add the new optimizer by following the syntax of already available optimizer. Voila its done !!!
