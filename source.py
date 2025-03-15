@@ -486,8 +486,8 @@ class Optimizer:
             self.update_nag_w[i] = self.momentum*self.update_nag_w[i] + self.learning_rate*grads_wrt_weights[i]
             self.update_nag_b[i] = self.momentum*self.update_nag_b[i] + self.learning_rate*grads_wrt_biases[i]
             # update of the weights
-            Weights[i] = Weights[i] - self.update_nag_w[i]
-            Biases[i] = Biases[i] - self.update_nag_b[i]
+            Weights[i] = Weights[i] - self.update_nag_w[i] - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - self.update_nag_b[i] - self.learning_rate*(2*self.weight_decay*Biases[i])
         
         # returning the weights and biases
         return Weights, Biases
