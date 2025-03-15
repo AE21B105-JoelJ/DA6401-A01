@@ -371,8 +371,8 @@ class Optimizer:
             grads_W = (1/batch_size)*np.sum(np.einsum("ij,kj->ikj",grads_wrt_preac,output_),axis=2) #changed mean
             grads_b = (1/batch_size)*np.sum(grads_wrt_preac, axis = 1,keepdims=True)
             # Adding the gradients due to weight decay
-            grads_W = grads_W + 2*self.weight_decay*W
-            grads_b = grads_b + 2*self.learning_rate*b
+            #grads_W = grads_W + 2*self.weight_decay*W
+            #grads_b = grads_b + 2*self.learning_rate*b
             # check the shapes of the gradient matches with the matrix size
             assert grads_W.shape == Weights[-layer].shape, f"Shape of grad_W and W at layer : {-layer} does not match"
             assert grads_b.shape == Biases[-layer].shape, f"Shape of grad_b and B at layer : {-layer} does not match"
@@ -446,8 +446,8 @@ class Optimizer:
             self.update_mom_w[i] = self.momentum*self.update_mom_w[i] + self.learning_rate*grads_wrt_weights[i]
             self.update_mom_b[i] = self.momentum*self.update_mom_b[i] + self.learning_rate*grads_wrt_biases[i]
             # step eqn
-            Weights[i] = Weights[i] - self.update_mom_w[i]
-            Biases[i] = Biases[i] - self.update_mom_b[i]
+            Weights[i] = Weights[i] - self.update_mom_w[i] - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - self.update_mom_b[i] - self.learning_rate*(2*self.weight_decay*Biases[i])
         
         # returning the weights and biases
         return Weights, Biases
