@@ -611,8 +611,8 @@ class Optimizer:
             self.nadam_v_w_hat = self.nadam_v_w[i]/(1 - self.beta_2**self.iter)
             self.nadam_v_b_hat = self.nadam_v_b[i]/(1 - self.beta_2**self.iter)
             # Update eqn
-            Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(self.nadam_v_w_hat) + self.eps))*(self.beta_1*self.nadam_m_w_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_weights[i]) - self.learning_rate*(2*self.weight_decay*Weights[i])
-            Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(self.nadam_v_b_hat) + self.eps))*(self.beta_1*self.nadam_m_b_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_biases[i]) - self.learning_rate*(2*self.weight_decay*Biases[i])
+            Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(self.nadam_v_w_hat) + self.eps))*(self.beta_1*self.nadam_m_w_hat + ((1-self.beta_1)/(1 - self.beta_1**self.iter))*grads_wrt_weights[i]) - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(self.nadam_v_b_hat) + self.eps))*(self.beta_1*self.nadam_m_b_hat + ((1-self.beta_1)/(1 - self.beta_1**self.iter))*grads_wrt_biases[i]) - self.learning_rate*(2*self.weight_decay*Biases[i])
 
         return Weights, Biases
 
