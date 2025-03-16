@@ -388,9 +388,6 @@ class Optimizer:
             # Finding gradients with respect to weights and biases (average along batch size)
             grads_W = (1/batch_size)*np.sum(np.einsum("ij,kj->ikj",grads_wrt_preac,output_),axis=2) #changed mean
             grads_b = (1/batch_size)*np.sum(grads_wrt_preac, axis = 1,keepdims=True)
-            # Adding the gradients due to weight decay
-            #grads_W = grads_W + 2*self.weight_decay*W
-            #grads_b = grads_b + 2*self.learning_rate*b
             # check the shapes of the gradient matches with the matrix size
             assert grads_W.shape == Weights[-layer].shape, f"Shape of grad_W and W at layer : {-layer} does not match"
             assert grads_b.shape == Biases[-layer].shape, f"Shape of grad_b and B at layer : {-layer} does not match"
