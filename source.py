@@ -278,14 +278,15 @@ class Optimizer:
     Initialize the optimizer which performs both backpropagation by finding gradients and
     update with respect to the optimizer chosen
     """
-    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, weight_decay = 0, momentum = 0, beta_rms = 0, beta_1 = 0.9, beta_2 = 0.999):
+    def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, weight_decay = 0, momentum = 0, beta_rms = 0, beta_1 = 0.9, beta_2 = 0.999, eps = 1e-6):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
         assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam","nadam"], "Optimizer is not valid"
         self.loss = loss
         self.optimizer = optimizer
         self.history = None
         self.learning_rate = learning_rate
-        self.epoch = 0
+        self.iter = 0
+        self.eps = eps
         self.weight_decay = weight_decay
         # for momentum based tracking
         self.momentum = momentum
@@ -371,8 +372,8 @@ class Optimizer:
             grads_W = (1/batch_size)*np.sum(np.einsum("ij,kj->ikj",grads_wrt_preac,output_),axis=2) #changed mean
             grads_b = (1/batch_size)*np.sum(grads_wrt_preac, axis = 1,keepdims=True)
             # Adding the gradients due to weight decay
-            grads_W = grads_W + 2*self.weight_decay*W
-            grads_b = grads_b + 2*self.learning_rate*b
+            #grads_W = grads_W + 2*self.weight_decay*W
+            #grads_b = grads_b + 2*self.learning_rate*b
             # check the shapes of the gradient matches with the matrix size
             assert grads_W.shape == Weights[-layer].shape, f"Shape of grad_W and W at layer : {-layer} does not match"
             assert grads_b.shape == Biases[-layer].shape, f"Shape of grad_b and B at layer : {-layer} does not match"
@@ -446,8 +447,8 @@ class Optimizer:
             self.update_mom_w[i] = self.momentum*self.update_mom_w[i] + self.learning_rate*grads_wrt_weights[i]
             self.update_mom_b[i] = self.momentum*self.update_mom_b[i] + self.learning_rate*grads_wrt_biases[i]
             # step eqn
-            Weights[i] = Weights[i] - self.update_mom_w[i]
-            Biases[i] = Biases[i] - self.update_mom_b[i]
+            Weights[i] = Weights[i] - self.update_mom_w[i] - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - self.update_mom_b[i] - self.learning_rate*(2*self.weight_decay*Biases[i])
         
         # returning the weights and biases
         return Weights, Biases
@@ -486,8 +487,8 @@ class Optimizer:
             self.update_nag_w[i] = self.momentum*self.update_nag_w[i] + self.learning_rate*grads_wrt_weights[i]
             self.update_nag_b[i] = self.momentum*self.update_nag_b[i] + self.learning_rate*grads_wrt_biases[i]
             # update of the weights
-            Weights[i] = Weights[i] - self.update_nag_w[i]
-            Biases[i] = Biases[i] - self.update_nag_b[i]
+            Weights[i] = Weights[i] - self.update_nag_w[i] - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - self.update_nag_b[i] - self.learning_rate*(2*self.weight_decay*Biases[i])
         
         # returning the weights and biases
         return Weights, Biases
@@ -521,8 +522,8 @@ class Optimizer:
             self.rms_v_w[i] = self.beta_rms*self.rms_v_w[i] + (1-self.beta_rms)*(grads_wrt_weights[i]**2)
             self.rms_v_b[i] = self.beta_rms*self.rms_v_b[i] + (1-self.beta_rms)*(grads_wrt_biases[i]**2)
             # Update eqn
-            Weights[i] = Weights[i] - (self.learning_rate/np.sqrt(self.rms_v_w[i] + eps))*grads_wrt_weights[i]
-            Biases[i] = Biases[i] - (self.learning_rate/np.sqrt(self.rms_v_b[i] + eps))*grads_wrt_biases[i]
+            Weights[i] = Weights[i] - (self.learning_rate/np.sqrt(self.rms_v_w[i] + eps))*grads_wrt_weights[i] - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - (self.learning_rate/np.sqrt(self.rms_v_b[i] + eps))*grads_wrt_biases[i] - self.learning_rate*(2*self.weight_decay*Biases[i])
 
         # returning the weights and biases
         return Weights, Biases
@@ -540,7 +541,6 @@ class Optimizer:
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
 
-        eps = 1e-8
         # Initialization of the matrix (if not done already)
         if self.adam_v_w is None or self.adam_v_b is None or self.adam_m_w is None or self.adam_m_b is None:
             self.adam_v_w, self.adam_v_b, self.adam_m_w, self.adam_m_b = [], [], [], []
@@ -562,13 +562,13 @@ class Optimizer:
             self.adam_v_w[i] = self.beta_2*self.adam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2)
             self.adam_v_b[i] = self.beta_2*self.adam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2)
             # Bias correction
-            self.adam_m_w_hat = self.adam_m_w[i]/(1 - self.beta_1**self.epoch)
-            self.adam_m_b_hat = self.adam_m_b[i]/(1 - self.beta_1**self.epoch)
-            self.adam_v_w_hat = self.adam_v_w[i]/(1 - self.beta_2**self.epoch)
-            self.adam_v_b_hat = self.adam_v_b[i]/(1 - self.beta_2**self.epoch)
+            self.adam_m_w_hat = self.adam_m_w[i]/(1 - self.beta_1**self.iter)
+            self.adam_m_b_hat = self.adam_m_b[i]/(1 - self.beta_1**self.iter)
+            self.adam_v_w_hat = self.adam_v_w[i]/(1 - self.beta_2**self.iter)
+            self.adam_v_b_hat = self.adam_v_b[i]/(1 - self.beta_2**self.iter)
             # Update eqn
-            Weights[i] = Weights[i] - (self.learning_rate*self.adam_m_w_hat)/(np.sqrt(self.adam_v_w_hat) + eps)
-            Biases[i] = Biases[i] - (self.learning_rate*self.adam_m_b_hat)/(np.sqrt(self.adam_v_b_hat) + eps)
+            Weights[i] = Weights[i] - (self.learning_rate*self.adam_m_w_hat)/(np.sqrt(self.adam_v_w_hat) + self.eps) - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - (self.learning_rate*self.adam_m_b_hat)/(np.sqrt(self.adam_v_b_hat) + self.eps) - self.learning_rate*(2*self.weight_decay*Biases[i])
 
         return Weights, Biases
     
@@ -585,7 +585,6 @@ class Optimizer:
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
 
-        eps = 1e-8
         # Initialization of the matrix (if not done already)
         if self.nadam_v_w is None or self.nadam_v_b is None or self.nadam_m_w is None or self.nadam_m_b is None:
             self.nadam_v_w, self.nadam_v_b, self.nadam_m_w, self.nadam_m_b = [], [], [], []
@@ -607,13 +606,13 @@ class Optimizer:
             self.nadam_v_w[i] = self.beta_2*self.nadam_v_w[i] + (1-self.beta_2)*(grads_wrt_weights[i]**2)
             self.nadam_v_b[i] = self.beta_2*self.nadam_v_b[i] + (1-self.beta_2)*(grads_wrt_biases[i]**2)
             # Bias correction
-            self.nadam_m_w_hat = self.nadam_m_w[i]/(1 - self.beta_1**self.epoch)
-            self.nadam_m_b_hat = self.nadam_m_b[i]/(1 - self.beta_1**self.epoch)
-            self.nadam_v_w_hat = self.nadam_v_w[i]/(1 - self.beta_2**self.epoch)
-            self.nadam_v_b_hat = self.nadam_v_b[i]/(1 - self.beta_2**self.epoch)
+            self.nadam_m_w_hat = self.nadam_m_w[i]/(1 - self.beta_1**self.iter)
+            self.nadam_m_b_hat = self.nadam_m_b[i]/(1 - self.beta_1**self.iter)
+            self.nadam_v_w_hat = self.nadam_v_w[i]/(1 - self.beta_2**self.iter)
+            self.nadam_v_b_hat = self.nadam_v_b[i]/(1 - self.beta_2**self.iter)
             # Update eqn
-            Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(self.nadam_v_w_hat) + eps))*(self.beta_1*self.nadam_m_w_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_weights[i])
-            Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(self.nadam_v_b_hat) + eps))*(self.beta_1*self.nadam_m_b_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_biases[i])
+            Weights[i] = Weights[i] - (self.learning_rate/(np.sqrt(self.nadam_v_w_hat) + self.eps))*(self.beta_1*self.nadam_m_w_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_weights[i]) - self.learning_rate*(2*self.weight_decay*Weights[i])
+            Biases[i] = Biases[i] - (self.learning_rate/(np.sqrt(self.nadam_v_b_hat) + self.eps))*(self.beta_1*self.nadam_m_b_hat + ((1-self.beta_1)/(1 - self.beta_1**self.epoch))*grads_wrt_biases[i]) - self.learning_rate*(2*self.weight_decay*Biases[i])
 
         return Weights, Biases
 
@@ -630,7 +629,7 @@ class Optimizer:
         Biases : list of bias matrices list[<numpy.ndarray>]
         """
 
-        self.epoch += 1
+        self.iter += 1
         # Step according to the optimizer
         if self.optimizer == "sgd":
             self.momentum = 0
@@ -655,13 +654,14 @@ class FeedForwardNeuralNetwork:
     Feed forward neural network class which is used to train the model and store the weights...
     in short (An Orchestrator of the modules)
     """
-    def __init__(self, arch : List , activation_sequence : List, optimizer = "adam", learning_rate = 1e-3, weight_decay = 0, loss = "cross_entropy", initialization = "Xavier", momentum = 0,threshold = 0.5, 
+    def __init__(self, arch : List , activation_sequence : List, optimizer = "adam", learning_rate = 1e-3, eps = 1e-6, weight_decay = 0, loss = "cross_entropy", initialization = "Xavier", momentum = 0,threshold = 0.5, 
                 beta_rms = 0.95, beta_1 = 0.9, beta_2 = 0.999):
         self.arch = arch
         self.activation_seqence = activation_sequence
         self.optimizer = optimizer
         self.weight_decay = weight_decay
         self.learning_rate  = learning_rate
+        self.eps = eps
         self.loss = loss
         self.momentum = momentum
         self.initialization = initialization
@@ -671,7 +671,7 @@ class FeedForwardNeuralNetwork:
         self.beta_2 = beta_2
 
         self.Optimizer_class = Optimizer(loss=self.loss,optimizer=self.optimizer,learning_rate=self.learning_rate,weight_decay=self.weight_decay,momentum=self.momentum,
-                                        beta_rms=self.beta_rms, beta_1 = self.beta_1, beta_2 = self.beta_2)
+                                        beta_rms=self.beta_rms, beta_1 = self.beta_1, beta_2 = self.beta_2, eps=self.eps)
         # Some assertions to be made
         assert len(self.activation_seqence) == len(self.arch) - 1 , "Number of layers and activation do not match"
 
