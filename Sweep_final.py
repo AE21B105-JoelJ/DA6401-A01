@@ -19,28 +19,39 @@ y_cv = source.one_hot_numpy(y_cv)
 y_test = source.one_hot_numpy(y_test)
 
 sweep_config = {
-    "method" : "bayes",
+    "method" : "random",
     "metric" : {
         "name" : "acc_cv",
         "goal" : "maximize"
     },
     "parameters" : {
-        "optimizer" : {"values" : ["rmsprop", "adam","nadam"]},
-        "learning_rate" : {"values" : [0.01,0.001]},
+        "optimizer" : {"values" : ["sgd","mom","nag","rmsprop", "adam","nadam"]},
+        "learning_rate" : {"values" : [0.01,0.001,0.0001]},
         "loss" : {"values" : ["cross_entropy"]},
         "initialization" : {"values" : ["Xavier","random"]},
-        "batch_size" : {"values" : [32,64,128]},
-        "weight_decay" : {"values" : [0,0.0005]},
+        "batch_size" : {"values" : [16,32,64]},
+        "weight_decay" : {"values" : [0,0.0005,0.5]},
         # Dynamic layer configuration
-        "num_layers": {"values": [1, 2]},  # Max 5 layers
+        "num_layers": {"values": [2, 3, 5]},  # Max 5 layers
         
         # Layer-specific parameters (up to 5 layers)
-        "layer_1_neurons": {"values": [64,128,256]},
-        "layer_1_activation": {"values": ["relu","tanh"]},
+        "layer_1_neurons": {"values": [32,64,128]},
+        "layer_1_activation": {"values": ["relu","tanh","sigmoid"]},
         
         "layer_2_neurons": {"values": [32,64,128]},
-        "layer_2_activation": {"values": ["relu","tanh"]},   
-        "epoch" : {"values" : [15,20]}
+        "layer_2_activation": {"values": ["relu","tanh","sigmoid"]},   
+
+        "layer_3_neurons": {"values": [32,64,128]},
+        "layer_3_activation": {"values": ["relu","tanh","sigmoid"]},   
+
+        "layer_4_neurons": {"values": [32,64,128]},
+        "layer_4_activation": {"values": ["relu","tanh","sigmoid"]},   
+
+        "layer_5_neurons": {"values": [32,64,128]},
+        "layer_5_activation": {"values": ["relu","tanh","sigmoid"]},   
+
+
+        "epoch" : {"values" : [5,10]}
     }
 }
 class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 
@@ -49,7 +60,7 @@ class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat',
 def train(config = None):
     run = wandb.init(config=config)
     config = wandb.config
-    run_name = f"lr_{config.learning_rate}_bs_{config.batch_size}_nlayer_{config.num_layers}_opt_{config.optimizer}"
+    run_name = f"lr_{config.learning_rate}_bs_{config.batch_size}_nlayer_{config.num_layers}_opt_{config.optimizer}_act_{config.layer_1_activation}_epoch_{config.epoch}_init_{config.initialization}"
     run.name = run_name
 
     # Access top-level parameters
