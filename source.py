@@ -169,6 +169,23 @@ def diff_softmax_idea(input_, y_true_reshaped):
     grads_wrt_preac = -2*(y_true_logits - input_)
     return grads_wrt_preac
 
+def diff_softmax_jacob(input_, y_true_reshaped, grad_wrt_postact):
+    """
+    input : numpy.ndarray 
+    Returns :
+    output : numpy.ndarray with softmax differentiation actiavtion
+    """
+
+    pred_ = softmax(input_)
+    grads_wrt_preac = np.zeros_like(pred_, dtype=np.longdouble)
+    for i in range(input_.shape[1]):
+        jacobian_ = np.diag(pred_[:,i]) - np.outer(pred_[:,i], pred_[:,i])
+        grads_ = np.matmul(jacobian_, grad_wrt_postact[:,i])
+        grads_wrt_preac[:,i] = grads_
+
+    return grads_wrt_preac
+
+
 def find_loss(y_pred, y_true, loss = "mean_squared_error"):
     if loss == "mean_squared_error":
         output_ = (1/len(y_true))*np.linalg.norm((y_pred - y_true), ord = "fro")
@@ -355,7 +372,7 @@ class Optimizer:
                 e_l[y_true_reshaped == 1] = 1
                 grads_wrt_preac = - (y_true_reshaped - output_) / batch_size 
             elif self.loss == "mean_squared_error":
-                grads_wrt_preac = diff_softmax_idea(input_, y_true_reshaped)
+                grads_wrt_preac = diff_softmax_jacob(input_, y_true_reshaped,grads_wrt_postact)
         elif output_activation_str == "sigmoid":
             grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
         elif output_activation_str == "tanh":
