@@ -77,8 +77,31 @@ Build of the neural network
  
 ![DL drawio](https://github.com/user-attachments/assets/04209272-1bd1-4199-8001-b8ecee5a9933)
 
+To define the Model,
+```
+md1 = source.FeedForwardNeuralNetwork(arch=arch, activation_sequence=activation_sequence, optimizer=optimizer,learning_rate=learning_rate,
+                                      eps=epsilon,weight_decay= weight_decay, loss=loss,initialization=initialization,momentum=momentum,
+                                      beta_rms=beta_rms,beta_1=beta_1,beta_2=beta_2)
+```
+
+To train the Model,
+```
+for epoch in range(1,epochs+1):
+    for X_, y_ in batch_train:
+        md1.train_step(X_, y_, epoch)
+```
+For more details you could look at the train.py file
+
 ## Model Validating
  The validation of the model can be added in the train.py if required. By default the confusion matrix for the test data, the train and validation data accuracy is logged at every training epoch. Final test accuracy is also logged at wandb. Do feel free to add and log any other metric.
 
+To validate the model,
+```
+# Forward call of the model
+train_pred = md1.forward_call(inputs_=X_train,threshold=True)
+# Accuracy of the prediction
+accuracy_train = source.accuracy(train_pred, y_train)
+```
+For more details you could look at the train.py file
 ## Add a new optimizer
  Lets say we are to add new optimizer named EVE !!! Now the steps to follow are these, add a function under optimizer named "eve_step()" which when given the gradients does one step of gradient descent. Now we will have to add the parameters and some additional matrices for this add those in the __init__() function in the optimizer class. Also I have an assert in the optimizers do take care to add the new optimizer name in that. Then in the "stepper()" function in the optimizer add the new optimizer by following the syntax of already available optimizer. Voila its done !!!
