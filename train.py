@@ -25,7 +25,7 @@ parser.add_argument("-beta", "--beta", type=float, default=0.95, help="Beta used
 parser.add_argument("-beta1", "--beta1", type=float, default=0.9, help="Beta_1 used by Adam and NAdam")
 parser.add_argument("-beta2", "--beta2",type=float, default=0.99, help="Beta_2 used by Adan and NAdam")
 parser.add_argument("-eps", "--epsilon", type=float, default=1e-6, help="Epsilon used by the optimizers")
-parser.add_argument("-w_d", "--weight_decay", type=float, default=5e-4, help="Weight decay used in training (L2)")
+parser.add_argument("-w_d", "--weight_decay", type=float, default=1e-4, help="Weight decay used in training (L2)")
 parser.add_argument("-w_i", "--weight_init", type=str, default="Xavier", choices=["Xavier", "random"], help = "Weight initialization for the params")
 parser.add_argument("-nhl", "--num_layers", type=int, default=3, help="number of hidden layers")
 parser.add_argument("-sz", "--hidden_size", type=int, default=128, help="Number of neurons per hidden layer")
