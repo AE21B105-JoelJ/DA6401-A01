@@ -4,6 +4,15 @@ This README file gives the information about the code and how the function space
 ## Links to report and project
 - GITHUB Link : https://github.com/AE21B105-JoelJ/DA6401-A01/
 - WandB link : https://api.wandb.ai/links/A1_DA6401_DL/ddwn0shz
+
+## Packages used
+- Numpy
+- Scikit-learn (For splitting training data into train and validation)
+- tensorflow.keras.datasets (to load the daraset)
+- matplotlib
+- seaborn
+- argparse
+
 ## Usage of the script
 To run the code use the following code (The external parameters are defaulted to best accuracy got!!!), all the modules and classes are present in source.py file. The single training can be done with the train.py file.
 
