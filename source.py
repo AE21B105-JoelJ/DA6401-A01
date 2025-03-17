@@ -111,7 +111,6 @@ def softmax(input_, safe = True):
     """
     if safe: # reduces the overflow in exponential
         inputs_safe = input_ - np.max(input_, axis = 0,keepdims=True)
-        #inputs_safe = np.clip(inputs_safe,a_min=1e-10, a_max=None)
         output_ = np.exp(inputs_safe )/np.sum(np.exp(inputs_safe), axis = 0, keepdims=True)
     else:
         output_ = np.exp(input_)/np.sum(np.exp(input_), axis = 0, keepdims=True)
@@ -159,16 +158,6 @@ def diff_linear(input_):
     output_ = np.ones_like(input_)
     return output_
 
-def diff_softmax_idea(input_, y_true_reshaped): 
-    """
-    input : numpy.ndarray 
-    Returns :
-    output : numpy.ndarray with softmax differentiation actiavtion
-    """
-    y_true_logits = y_true_reshaped*10000.0
-    grads_wrt_preac = -2*(y_true_logits - input_)
-    return grads_wrt_preac
-
 def diff_softmax_jacob(input_, y_true_reshaped, grad_wrt_postact):
     """
     input : numpy.ndarray 
@@ -193,7 +182,6 @@ def find_loss(y_pred, y_true, loss = "mean_squared_error"):
         output_ = (-1/len(y_true))*np.sum(y_true*np.log(y_pred) + (1-y_true)*np.log(1-y_pred))
     elif loss == "cross_entropy":
         eps = 1e-8
-        #output_ = (-1/len(y_true))*np.sum(np.log(y_pred[y_true == 1]))
         output_ = (-1/len(y_true))*np.sum(np.log(y_pred + eps)*y_true)
     return np.squeeze(output_)
 
@@ -223,7 +211,6 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
         activation = activation_sequence[i]
         # computing pre activation
         pre_ac = np.matmul(W,input_reshaped) + b
-        # (DEBUG) print(input_reshaped.min(), input_reshaped.max(), W.min(), W.max(), b.min(), b.max())
         # appending to the pre activation matrix
         fp_pre_ac.append(pre_ac)
         # computing activation
