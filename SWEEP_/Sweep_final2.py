@@ -25,7 +25,7 @@ sweep_config = {
         "goal" : "maximize"
     },
     "parameters" : {
-        "optimizer" : {"values" : ["sgd","mom","nag","rmsprop", "adam","nadam"]},
+        "optimizer" : {"values" : ["sgd","momentum","nag","rmsprop", "adam","nadam"]},
         "learning_rate" : {"values" : [0.01,0.001,0.0001]},
         "loss" : {"values" : ["cross_entropy"]},
         "initialization" : {"values" : ["Xavier","random"]},
@@ -36,19 +36,19 @@ sweep_config = {
         
         # Layer-specific parameters (up to 5 layers)
         "layer_1_neurons": {"values": [32,64,128]},
-        "layer_1_activation": {"values": ["relu","tanh","sigmoid"]},
+        "layer_1_activation": {"values": ["ReLu","tanh","sigmoid"]},
         
         "layer_2_neurons": {"values": [32,64,128]},
-        "layer_2_activation": {"values": ["relu","tanh","sigmoid"]},   
+        "layer_2_activation": {"values": ["ReLu","tanh","sigmoid"]},   
 
         "layer_3_neurons": {"values": [32,64,128]},
-        "layer_3_activation": {"values": ["relu","tanh","sigmoid"]},   
+        "layer_3_activation": {"values": ["ReLu","tanh","sigmoid"]},   
 
         "layer_4_neurons": {"values": [32,64,128]},
-        "layer_4_activation": {"values": ["relu","tanh","sigmoid"]},   
+        "layer_4_activation": {"values": ["ReLu","tanh","sigmoid"]},   
 
         "layer_5_neurons": {"values": [32,64,128]},
-        "layer_5_activation": {"values": ["relu","tanh","sigmoid"]},   
+        "layer_5_activation": {"values": ["ReLu","tanh","sigmoid"]},   
 
 
         "epoch" : {"values" : [5,10]}
