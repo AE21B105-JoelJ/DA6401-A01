@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser(description="Training a neural network with bac
 parser.add_argument("-wp", '--wandb_project', type=str, default="projectname", help = "project name used in wandb dashboard to track experiments")
 parser.add_argument("-we", "--wandb_entity", type=str, default="myname", help="Wandb enetity used to track the experiments")
 parser.add_argument("-d", "--dataset", type=str, default="fashion_mnist", choices=["mnist", "fashion_mnist"], help = "Dataset on which the model will be trained")
-parser.add_argument("-e", "--epochs", type=int, default=10, help = "Number of epochs to train the model")
+parser.add_argument("-e", "--epochs", type=int, default=8, help = "Number of epochs to train the model")
 parser.add_argument("-b", "--batch_size", type=int, default=32, help="Batch size used to train the network")
 parser.add_argument("-l", "--loss", type=str, default="cross_entropy", choices=["mean_squared_error", "cross_entropy"], help="Loss function to use")
 parser.add_argument("-o", "--optimizer", type=str, default="adam", choices=["sgd","momentum","nag","rmsprop","adam","nadam"], help="optimizer to be used in training")
@@ -29,7 +29,7 @@ parser.add_argument("-w_d", "--weight_decay", type=float, default=0.0, help="Wei
 parser.add_argument("-w_i", "--weight_init", type=str, default="Xavier", choices=["Xavier", "random"], help = "Weight initialization for the params")
 parser.add_argument("-nhl", "--num_layers", type=int, default=3, help="number of hidden layers")
 parser.add_argument("-sz", "--hidden_size", type=int, default=128, help="Number of neurons per hidden layer")
-parser.add_argument("-a", "--activation", type=str, default="tanh", choices=["identity","sigmoid","tanh","ReLu"], help = "activation to be used for the hidden layers")
+parser.add_argument("-a", "--activation", type=str, default="ReLu", choices=["identity","sigmoid","tanh","ReLu"], help = "activation to be used for the hidden layers")
 # parsing the arguments
 args = parser.parse_args()
 
