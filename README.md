@@ -114,3 +114,6 @@ accuracy_train = source.accuracy(train_pred, y_train)
 For more details you could look at the train.py file
 ## Add a new optimizer
  Lets say we are to add new optimizer named EVE !!! Now the steps to follow are these, add a function under optimizer named "eve_step()" which when given the gradients does one step of gradient descent. Now we will have to add the parameters and some additional matrices for this add those in the __init__() function in the optimizer class. Also I have an assert in the optimizers do take care to add the new optimizer name in that. Then in the "stepper()" function in the optimizer add the new optimizer by following the syntax of already available optimizer. Voila its done !!!
+
+## Note
+ The train.py file assumes that the num_of_neurons per layer and activation of each hidden layer is same but in the report and assignments different activations and different neuron numbers per layer was experimented which could be seen from the report.
