@@ -214,10 +214,10 @@ def forward_propagation(input_, Weights, Biases, activation_sequence : List):
         # appending to the pre activation matrix
         fp_pre_ac.append(pre_ac)
         # computing activation
-        if activation in ["sigmoid","relu","tanh","softmax","linear"]:
+        if activation in ["sigmoid","ReLu","tanh","softmax","identity"]:
             if activation == "sigmoid":
                 post_ac = sigmoid(pre_ac)
-            elif activation == "relu":
+            elif activation == "ReLu":
                 post_ac = relu(pre_ac)
             elif activation == "tanh":
                 post_ac = tanh(pre_ac)
@@ -284,7 +284,7 @@ class Optimizer:
     """
     def __init__(self, loss = "mean_squared_error", optimizer = "gd", learning_rate = 0.001, weight_decay = 0, momentum = 0, beta_rms = 0, beta_1 = 0.9, beta_2 = 0.999, eps = 1e-6):
         assert loss in ["mean_squared_error", "binary_cross_entropy", "cross_entropy"], "Loss function is not valid"
-        assert optimizer in ["gd","sgd","mom","nag","adagrad","rmsprop","adam","nadam"], "Optimizer is not valid"
+        assert optimizer in ["gd","sgd","momentum","nag","adagrad","rmsprop","adam","nadam"], "Optimizer is not valid"
         self.loss = loss
         self.optimizer = optimizer
         self.history = None
@@ -351,7 +351,7 @@ class Optimizer:
         elif self.loss == "mean_squared_error":
             grads_wrt_postact = -2*(y_true_reshaped - output_) 
         ## Output layer preactivation
-        if output_activation_str == "linear":
+        if output_activation_str == "identity":
             grads_wrt_preac = grads_wrt_postact*diff_linear(input_)
         elif output_activation_str == "softmax":
             if self.loss == "cross_entropy":
@@ -364,7 +364,7 @@ class Optimizer:
             grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
         elif output_activation_str == "tanh":
             grads_wrt_preac = grads_wrt_postact*diff_tanh(input_)
-        elif output_activation_str == "relu":
+        elif output_activation_str == "ReLu":
             grads_wrt_preac = grads_wrt_postact*diff_relu(input_)
 
         for layer in range(1,len(Weights)+1):
@@ -386,9 +386,9 @@ class Optimizer:
             activation = activation_sequence[-layer-1]
             # Finding gradients with respect to preactivation and post
             grads_wrt_postact = np.matmul(W.T,grads_wrt_preac)
-            if activation == "linear":
+            if activation == "identity":
                 grads_wrt_preac = grads_wrt_postact*diff_linear(input_)
-            elif activation == "relu":
+            elif activation == "ReLu":
                 grads_wrt_preac = grads_wrt_postact*diff_relu(input_)
             elif activation == "sigmoid":
                 grads_wrt_preac = grads_wrt_postact*diff_sigmoid(input_)
@@ -635,7 +635,7 @@ class Optimizer:
         if self.optimizer == "sgd":
             self.momentum = 0
             Weights, Biases = self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
-        elif self.optimizer == "mom":
+        elif self.optimizer == "momentum":
             Weights, Biases = self.sgd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
         elif self.optimizer == "gd":
             Weights, Biases =  self.gd_step(Weights, Biases, pre_ac, post_ac, y_true, activation_sequence)
@@ -692,7 +692,7 @@ class FeedForwardNeuralNetwork:
         """
         activation_copy = self.activation_seqence.copy()
         if with_logits:
-            activation_copy[-1] = "linear"
+            activation_copy[-1] = "identity"
         outputs_ = None
         if is_batch_alone:
             for X in inputs_:
