@@ -98,9 +98,10 @@ weight_decay = args.weight_decay
 beta_rms = args.beta
 beta_1 = args.beta1
 beta_2 = args.beta2
+epsilon = args.epsilon
 # Model definition
 md1 = source.FeedForwardNeuralNetwork(arch=arch, activation_sequence=activation_sequence, optimizer=optimizer,
-                                      learning_rate=learning_rate,weight_decay= weight_decay, loss=loss,initialization=initialization,momentum=momentum,beta_rms=beta_rms,
+                                      learning_rate=learning_rate,eps=epsilon,weight_decay= weight_decay, loss=loss,initialization=initialization,momentum=momentum,beta_rms=beta_rms,
                                       beta_1=beta_1,beta_2=beta_2)
 
 # Batchloader for the model training
@@ -147,7 +148,7 @@ wandb.log({
     )
 })
 
-# Plot confusion matrix with custom colors and annotations
+# Plotting confusion matrix
 plt.figure(figsize=(9,7))
 font = {'family' : 'Comic Sans MS','weight' : 'normal', 'size'   : 12}
 sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", xticklabels=class_names, yticklabels=class_names,cbar=False)
@@ -155,7 +156,7 @@ plt.title("Confusion Matrix", fontdict= font)
 plt.xlabel("Predicted",fontdict=font)
 plt.ylabel("True", fontdict=font)
 plt.tight_layout()
-# Log the plot to wandb
+# Logging the plot to wandb
 wandb.log({"Confusion Matrix_chk": wandb.Image(plt.gcf())})
 plt.close()
 
